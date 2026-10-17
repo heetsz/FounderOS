@@ -1,0 +1,3 @@
+export default function ProjectGate({ onCreate }) {
+  return <div className="grid min-h-[70vh] place-items-center text-center"><div className="max-w-md"><div className="mx-auto mb-5 grid h-16 w-16 place-items-center rounded-2xl bg-blue-50 text-3xl text-blue-600">◈</div><h1 className="font-display text-3xl font-semibold">Start with a project</h1><p className="mt-3 text-sm leading-6 text-slate-500">Create a project to give your agents a shared FalkorDB graph where memory, conversations, decisions, and handoffs persist.</p><button className="mt-6 rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-700" onClick={onCreate}>Create project</button></div></div>
+}
