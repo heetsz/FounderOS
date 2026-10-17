@@ -1,122 +1,72 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
+import { useEffect, useState } from 'react'
 import './App.css'
 
-function App() {
-  const [count, setCount] = useState(0)
+const API = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'
+const nav = [['overview', 'Overview'], ['chat', 'Agents & Chat'], ['memory', 'Memory'], ['decisions', 'Decisions'], ['tasks', 'Tasks'], ['drift', 'Drift Radar']]
 
-  return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
-
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+async function api(path, options = {}) {
+  const res = await fetch(`${API}${path}`, { headers: { 'Content-Type': 'application/json', ...options.headers }, ...options })
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail?.message || 'Request failed')
+  return res.json()
 }
+
+function App() {
+  const [page, setPage] = useState('overview')
+  const [projects, setProjects] = useState([])
+  const [project, setProject] = useState(null)
+  const [summary, setSummary] = useState(null)
+  const [error, setError] = useState('')
+  const [modal, setModal] = useState(null)
+  const refresh = () => {
+    if (!project) return
+    return api(`/projects/${project.id}/summary`).then(setSummary).catch((e) => setError(e.message))
+  }
+  useEffect(() => {
+    api('/projects')
+      .then((items) => { setProjects(items); setProject(items[0] || null) })
+      .catch((e) => setError(e.message))
+  }, [])
+  useEffect(() => {
+    if (project) {
+      api(`/projects/${project.id}/summary`)
+        .then(setSummary)
+        .catch((e) => setError(e.message))
+    }
+  }, [project])
+  const createProject = async (form) => { const item = await api('/projects', { method: 'POST', body: JSON.stringify(form) }); setProjects((items) => [...items, item]); setProject(item); setModal(null) }
+  return <div className="app"><Sidebar page={page} setPage={setPage} projects={projects} project={project} setProject={setProject} onNew={() => setModal('project')} />
+    <main><Topbar project={project} onSearch={(q) => q && setPage('memory')} /><div className="content">
+      {error && <div className="error-banner">{error}<button onClick={() => { setError(''); refresh() }}>Retry</button></div>}
+      {!project ? <EmptyProject onCreate={() => setModal('project')} /> : <>
+        {page === 'overview' && <Dashboard project={project} summary={summary} setPage={setPage} onNew={() => setPage('chat')} />}
+        {page === 'chat' && <Chat project={project} refresh={refresh} />}
+        {page === 'memory' && <Memory project={project} onCreate={(type) => setModal(type)} />}
+        {page === 'decisions' && <Records project={project} type="decision" title="Decisions & provenance" onCreate={() => setModal('decision')} />}
+        {page === 'tasks' && <Records project={project} type="task" title="Task board" onCreate={() => setModal('task')} />}
+        {page === 'drift' && <Records project={project} type="alert" title="Decision Drift Radar" />}
+      </>}
+    </div></main>
+    {modal && <Modal type={modal} project={project} onClose={() => setModal(null)} onSubmit={modal === 'project' ? createProject : async (form) => { const route = modal === 'decision' ? 'decisions' : modal === 'task' ? 'tasks' : `memory/${modal}s`; await api(`/projects/${project.id}/${route}`, { method: 'POST', body: JSON.stringify(form) }); setModal(null); refresh() }} />}
+  </div>
+}
+
+function Sidebar({ page, setPage, projects, project, setProject, onNew }) {
+  return <aside className="sidebar"><div className="logo"><span>◈</span> FounderOS</div><label>PROJECT</label><select value={project?.id || ''} onChange={(e) => setProject(projects.find((p) => p.id === e.target.value) || null)}><option value="">Select a project</option>{projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select><button className="new-project" onClick={onNew}>＋ New project</button><label>WORKSPACE</label>{nav.map(([id, text]) => <button key={id} className={`nav ${page === id ? 'selected' : ''}`} onClick={() => setPage(id)}><span>{id === 'overview' ? '⌂' : id === 'chat' ? '✦' : id === 'memory' ? '◈' : id === 'decisions' ? '◇' : id === 'tasks' ? '✓' : '!'}</span>{text}{id === 'drift' && <b>0</b>}</button>)}<div className="sidebar-fill" /><div className="db-status"><i /> FalkorDB <small>Graph memory connected</small></div><div className="user"><span>DF</span><strong>Founder workspace<small>Demo identity</small></strong>⚙</div></aside>
+}
+function Topbar({ project, onSearch }) { const [value, setValue] = useState(''); return <header className="topbar"><div className="crumb">FounderOS <span>/</span> {project?.name || 'Workspace'}</div><div className="top-actions"><div className="top-search"><span>⌕</span><input value={value} onChange={(e) => setValue(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && onSearch(value)} placeholder="Search project memory..." /></div><button title="Help">?</button><button className="top-avatar" title="Profile">DF</button></div></header> }
+function EmptyProject({ onCreate }) { return <div className="empty-page"><div className="empty-icon">◈</div><h1>Start with a project</h1><p>Create a project so your agents have a shared place to research, decide, and execute.</p><button className="primary" onClick={onCreate}>Create project</button></div> }
+function Header({ eyebrow, title, subtitle, children }) { return <div className="page-header"><div><div className="eyebrow">{eyebrow}</div><h1>{title}</h1>{subtitle && <p>{subtitle}</p>}</div><div className="actions">{children}</div></div> }
+function Dashboard({ project, summary, setPage, onNew }) { const counts = summary?.counts || {}; return <><Header eyebrow="PROJECT OVERVIEW" title={project.name} subtitle={project.description || 'Your project workspace and shared memory.'}><button className="secondary" onClick={onNew}>＋ New conversation</button></Header><div className="goal-card"><div><label>PROJECT STATUS</label><h2>{project.status || 'Active'}</h2><p>{project.goals?.length ? project.goals.join(' · ') : 'No goals added yet. Add goals when you are ready.'}</p></div><button className="secondary" onClick={() => setPage('memory')}>Open memory →</button></div><div className="metrics">{[['Memory records', counts.memory || 0, '◈'], ['Decisions', counts.decisions || 0, '◇'], ['Open tasks', counts.tasks || 0, '✓'], ['Drift alerts', counts.alerts || 0, '!']].map(([label, value, icon]) => <div className="metric" key={label}><span>{icon}</span><label>{label}</label><strong>{value}</strong></div>)}</div><div className="two-col"><Panel title="Recent decisions" action={() => setPage('decisions')} actionText="View all">{summary?.recent_decisions?.length ? summary.recent_decisions.map((r) => <RecordRow key={r.id} record={r} />) : <InlineEmpty text="No decisions yet." action="Create a decision" onClick={() => setPage('decisions')} />}</Panel><Panel title="Recent agent work" action={() => setPage('chat')} actionText="Open chat">{summary?.recent_runs?.length ? summary.recent_runs.map((r) => <RecordRow key={r.id} record={r} />) : <InlineEmpty text="No agent runs yet." action="Start a conversation" onClick={onNew} />}</Panel></div><Panel title="Tasks"><div className="task-summary"><TaskCount label="To do" count={summary?.recent_tasks?.filter((t) => t.status === 'todo').length || 0} /><TaskCount label="In progress" count={summary?.recent_tasks?.filter((t) => t.status === 'in_progress').length || 0} /><TaskCount label="Blocked" count={summary?.recent_tasks?.filter((t) => t.status === 'blocked').length || 0} /><TaskCount label="Done" count={summary?.recent_tasks?.filter((t) => t.status === 'done').length || 0} /></div></Panel></> }
+function Panel({ title, action, actionText, children }) { return <section className="panel"><div className="panel-head"><h2>{title}</h2>{action && <button onClick={action}>{actionText} →</button>}</div>{children}</section> }
+function RecordRow({ record }) { return <div className="record-row"><span className="record-type">{record.type}</span><div><strong>{record.title || record.task || record.agent_type}</strong><small>{record.status || record.claim || 'Saved record'}</small></div><span>›</span></div> }
+function InlineEmpty({ text, action, onClick }) { return <div className="inline-empty"><p>{text}</p>{onClick && <button onClick={onClick}>{action} →</button>}</div> }
+function TaskCount({ label, count }) { return <div><span>{label}</span><strong>{count}</strong></div> }
+
+function Chat({ project, refresh }) { const [agent, setAgent] = useState('research'); const [text, setText] = useState(''); const [messages, setMessages] = useState([]); const [busy, setBusy] = useState(false); const send = async () => { if (!text.trim() || busy) return; setBusy(true); try { let conversation = await api(`/projects/${project.id}/conversations`, { method: 'POST', body: JSON.stringify({ title: `${agent} workspace` }) }); setMessages((m) => [...m, { role: 'user', content: text }]); const result = await api(`/conversations/${conversation.id}/messages`, { method: 'POST', body: JSON.stringify({ content: text, agent_type: agent }) }); setMessages((m) => [...m, { role: 'assistant', content: result.output?.summary || 'Run completed.', result }]); setText(''); refresh() } catch (e) { setMessages((m) => [...m, { role: 'error', content: e.message }]) } finally { setBusy(false) } }; return <><Header eyebrow="AGENTS & CHAT" title="Agent workspace" subtitle="Ask an agent to work with this project’s authorized graph memory."><select value={agent} onChange={(e) => setAgent(e.target.value)}><option value="research">Research Agent</option><option value="strategy">Strategy Agent</option><option value="execution">Execution Agent</option></select></Header><div className="chat"><aside className="conversation-list"><h2>Conversations</h2><InlineEmpty text="Start a conversation to create the first session." /></aside><section className="chat-main"><div className="run-state"><i className={busy ? 'busy' : ''} /> {busy ? 'Retrieving memory and working...' : 'Ready'}<span>{agent} agent</span></div><div className="messages">{messages.length ? messages.map((m, i) => <div className={`message ${m.role}`} key={i}><b>{m.role === 'user' ? 'You' : m.role === 'error' ? 'Error' : `${agent} agent`}</b><p>{m.content}</p>{m.result?.passport_id && <small>Context Passport created · {m.result.passport_id}</small>}</div>) : <div className="empty-chat"><div>✦</div><h2>Ask FounderOS</h2><p>Your agent will retrieve relevant project memory and show the evidence behind its response.</p></div>}</div><div className="composer"><textarea value={text} onChange={(e) => setText(e.target.value)} placeholder="Ask an agent about this project..." /><button className="primary" onClick={send}>{busy ? 'Working...' : 'Send'}</button></div></section><aside className="inspector"><h2>Context inspector</h2><InlineEmpty text="Retrieved memory and the Context Passport will appear after a run." /></aside></div></> }
+
+function Memory({ project, onCreate }) { const [records, setRecords] = useState([]); const [query, setQuery] = useState(''); const load = () => api(`/projects/${project.id}/memory/search?q=${encodeURIComponent(query || 'project')}`).then(setRecords).catch(() => setRecords([])); useEffect(load, [project, query]); return <><Header eyebrow="SHARED MEMORY · FALKORDB" title="Memory Explorer" subtitle="Search and inspect the records saved in this project graph."><button className="secondary" onClick={() => onCreate('source')}>＋ Add source</button><button className="secondary" onClick={() => onCreate('finding')}>＋ Add finding</button><button className="secondary" onClick={() => api(`/projects/${project.id}/export?scope=project`).then((data) => download(data, 'founderos-project.json'))}>Export project</button></Header><div className="toolbar"><input value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && load()} placeholder="Search findings, sources, decisions, tasks..." /><button className="secondary" onClick={load}>Search</button><button className="secondary" onClick={() => onCreate('finding')}>List view</button></div><div className="memory"><div>{records.length ? records.map((r) => <RecordRow key={r.id} record={r} />) : <div className="empty-card"><h2>Your shared memory is empty</h2><p>Research findings, sources, decisions, and tasks will appear here as you save them.</p><button className="secondary" onClick={() => onCreate('finding')}>Add the first finding</button></div>}</div><aside className="inspector"><h2>Selected record</h2><InlineEmpty text="Select a record to inspect content, provenance, and relationships." /></aside></div></> }
+function Records({ project, type, title, onCreate }) { const [records, setRecords] = useState([]); useEffect(() => { const route = type === 'alert' ? 'alerts' : `${type}s`; api(`/projects/${project.id}/${route}`).then(setRecords).catch(() => setRecords([])) }, [project, type]); return <><Header eyebrow={`${project.name.toUpperCase()} · ${type.toUpperCase()}`} title={title} subtitle={type === 'alert' ? 'Review possible inconsistencies without silently changing approved decisions.' : 'Create and inspect project records backed by FalkorDB.'}>{onCreate && <button className="primary" onClick={onCreate}>＋ Create {type}</button>}</Header><div className="record-page">{records.length ? records.map((r) => <article className="record-card" key={r.id}><span className="record-type">{type}</span><div><h2>{r.title || r.explanation}</h2><p>{r.content || r.rationale || r.description || 'No additional details.'}</p><small>{r.status || 'Open'} · {r.updated_at || r.created_at || 'Recently created'}</small></div></article>) : <div className="empty-card"><h2>{type === 'alert' ? 'No decision drift detected' : `No ${type}s yet`}</h2><p>{type === 'alert' ? 'New evidence that may affect decisions will appear here.' : 'Add your first record from the frontend when you are ready.'}</p>{onCreate && <button className="secondary" onClick={onCreate}>Create {type}</button>}</div>}</div></> }
+function Modal({ type, onClose, onSubmit }) { const [title, setTitle] = useState(''); const [content, setContent] = useState(''); return <div className="modal-backdrop" onMouseDown={onClose}><form className="modal" onSubmit={(e) => { e.preventDefault(); onSubmit(type === 'project' ? { name: title, description: content, goals: [], constraints: [] } : { title, content }) }} onMouseDown={(e) => e.stopPropagation()}><div className="panel-head"><h2>{type === 'project' ? 'Create project' : `Create ${type}`}</h2><button type="button" onClick={onClose}>×</button></div><label>{type === 'project' ? 'Project name' : 'Title'}<input required value={title} onChange={(e) => setTitle(e.target.value)} placeholder={type === 'project' ? 'e.g. My startup' : `Enter ${type} title`} /></label><label>{type === 'project' ? 'Description' : 'Details'}<textarea value={content} onChange={(e) => setContent(e.target.value)} placeholder="Add context for your team and agents..." /></label><div className="modal-actions"><button type="button" className="secondary" onClick={onClose}>Cancel</button><button className="primary">Save</button></div></form></div> }
+function download(data, name) { const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = name; link.click(); URL.revokeObjectURL(link.href) }
 
 export default App

@@ -1,2 +1,8 @@
-fastapi
-uvicorn[standard]
+fastapi==0.143.2
+uvicorn[standard]==0.54.0
+httpx==0.28.1
+pydantic==2.12.5
+pytest==8.4.2
+falkordb==1.2.0
+langgraph==1.2.16
+python-dotenv==1.2.1
