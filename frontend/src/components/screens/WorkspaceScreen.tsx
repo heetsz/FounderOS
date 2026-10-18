@@ -15,6 +15,9 @@ interface MessageItem {
   agentName?: string;
   text: string;
   timestamp: number;
+  routingAgent?: string;
+  routingReason?: string;
+  memoryFacts?: Fact[];
 }
 
 interface HandoffItem {
@@ -127,8 +130,15 @@ export const WorkspaceScreen: React.FC<WorkspaceScreenProps> = ({
           )
         );
       },
-      onAgentChanged: (agent) => {
+      onAgentChanged: (agent, reason) => {
         setActiveAgent(agent);
+        setMessages((prev) =>
+          prev.map((message) =>
+            message.id === agentMsgId
+              ? { ...message, routingAgent: agent, routingReason: reason }
+              : message,
+          ),
+        );
       },
       onHandoff: (fromAgent, toAgent, reason) => {
         const handoffItem: HandoffItem = {
@@ -142,6 +152,12 @@ export const WorkspaceScreen: React.FC<WorkspaceScreenProps> = ({
         setMessages((prev) => [...prev, handoffItem]);
       },
       onMemoryRead: (data) => {
+        const graphFacts = Array.isArray(data.facts) ? data.facts : [];
+        setMessages((prev) =>
+          prev.map((message) =>
+            message.id === agentMsgId ? { ...message, memoryFacts: graphFacts } : message,
+          ),
+        );
         if (data.facts && data.facts.length > 0) {
           setMemoryUsed(data.facts.slice(0, 5));
         }
@@ -254,6 +270,13 @@ export const WorkspaceScreen: React.FC<WorkspaceScreenProps> = ({
                   </div>
                 )}
 
+                {!isUser && item.routingReason && (
+                  <div className="mb-2 max-w-2xl rounded-lg border border-primary/15 bg-primary-tint/50 px-3 py-2 text-[11px] leading-relaxed text-textMuted">
+                    <span className="font-semibold text-primary">Supervisor decision:</span>{" "}
+                    Routed to {item.routingAgent?.replaceAll("_", " ")} after loading this founder’s graph. {item.routingReason}
+                  </div>
+                )}
+
                 <div
                   className={`max-w-2xl px-4 py-3 rounded-card text-xs md:text-sm leading-relaxed whitespace-pre-wrap ${
                     isUser
@@ -270,6 +293,37 @@ export const WorkspaceScreen: React.FC<WorkspaceScreenProps> = ({
                     </span>
                   )}
                 </div>
+                {!isUser && item.text && item.memoryFacts && (
+                  <details className="mt-2 max-w-2xl rounded-lg border border-sky-200 bg-sky-50/70 px-3 py-2 text-[11px] text-slate-700">
+                    <summary className="cursor-pointer font-semibold text-sky-800">
+                      Founder graph context ({item.memoryFacts.length} active facts sent to the agent)
+                    </summary>
+                    {item.memoryFacts.length > 0 ? (
+                      <>
+                        <p className="mt-1 text-slate-500">Showing up to five facts included in the agent’s graph context.</p>
+                        <ul className="mt-2 space-y-2 border-t border-sky-200 pt-2">
+                          {item.memoryFacts.slice(0, 5).map((fact) => (
+                            <li key={`${fact.key}-${fact.updated_at ?? ""}`}>
+                              <span className="font-mono font-semibold text-sky-900">{fact.key}</span>
+                              <span className="text-slate-500"> · {fact.confidence ? `${Math.round(fact.confidence * 100)}% confidence` : "graph memory"}</span>
+                              <div className="mt-0.5 leading-relaxed">{fact.text}</div>
+                              {(fact.source_agent || fact.source_episode) && (
+                                <div className="mt-0.5 font-mono text-[10px] text-slate-500">
+                                  {fact.source_agent ? `learned by ${fact.source_agent}` : "learned in graph"}
+                                  {fact.source_episode ? ` · ${fact.source_episode}` : ""}
+                                </div>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      </>
+                    ) : (
+                      <p className="mt-2 border-t border-sky-200 pt-2 leading-relaxed">
+                        No prior facts were stored for this founder. The agent received the current request without historical graph facts.
+                      </p>
+                    )}
+                  </details>
+                )}
               </div>
             );
           })}

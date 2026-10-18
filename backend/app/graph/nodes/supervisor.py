@@ -29,7 +29,8 @@ async def supervisor_node(state: FounderState) -> dict:
         logger.info(f"Supervisor routing via handoff to: {to_agent}")
         return {
             "active_agent": to_agent,
-            "hops": state.get("hops", 0) + 1
+            "hops": state.get("hops", 0) + 1,
+            "routing_reason": handoff.get("reason", f"Continuing the specialist handoff to {to_agent}.")
         }
 
     # Otherwise route using the LLM
@@ -41,6 +42,7 @@ async def supervisor_node(state: FounderState) -> dict:
     prompt = f"Founder Message: {user_query}\n\nKnown Facts:\n{facts_summary or 'No prior facts'}"
 
     llm = get_llm("route")
+    reasoning = "Selected based on the founder's request and the startup facts in graph memory."
     try:
         response = await llm.ainvoke([
             SystemMessage(content=SYSTEM_PROMPT),
@@ -55,14 +57,17 @@ async def supervisor_node(state: FounderState) -> dict:
 
         data = json.loads(content)
         selected_agent = data.get("active_agent", "validator")
+        reasoning = data.get("reasoning") or reasoning
         if selected_agent not in ["validator", "market_scout", "business_model", "brand_pitch", "launch_planner"]:
             selected_agent = "validator"
     except Exception as e:
         logger.warning(f"Supervisor parsing error, defaulting to validator: {e}")
         selected_agent = "validator"
+        reasoning = "Using the default validator route because the supervisor response could not be parsed."
 
     return {
         "active_agent": selected_agent,
-        "hops": state.get("hops", 0) + 1
+        "hops": state.get("hops", 0) + 1,
+        "routing_reason": reasoning
     }
 

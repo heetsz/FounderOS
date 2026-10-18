@@ -74,7 +74,7 @@ async def chat_event_generator(req: ChatStreamRequest) -> AsyncGenerator[dict, N
                         "event": "agent_changed",
                         "data": json.dumps({
                             "agent": active_agent,
-                            "reason": f"Supervisor routed request to {active_agent}"
+                            "reason": node_output.get("routing_reason", f"Supervisor routed request to {active_agent}")
                         })
                     }
                     await asyncio.sleep(0.05)

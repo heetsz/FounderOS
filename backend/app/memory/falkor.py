@@ -99,14 +99,24 @@ async def load_memory_context(founder_id: str) -> Dict[str, Any]:
     facts_query = """
     MATCH (f:Fact)
     WHERE NOT (f)<-[:SUPERSEDES]-()
-    RETURN f.key AS key, f.kind AS kind, f.text AS text, f.confidence AS confidence, f.updated_at AS updated_at
+    OPTIONAL MATCH (e:Episode)-[:LEARNED]->(f)
+    RETURN f.key AS key, f.kind AS kind, f.text AS text, f.confidence AS confidence,
+           f.updated_at AS updated_at, e.id AS source_episode, e.agent AS source_agent
     ORDER BY f.updated_at DESC
     LIMIT 25
     """
     try:
         facts_res = await g.query(facts_query)
         facts = [
-            {"key": r[0], "kind": r[1], "text": r[2], "confidence": r[3], "updated_at": r[4]}
+            {
+                "key": r[0],
+                "kind": r[1],
+                "text": r[2],
+                "confidence": r[3],
+                "updated_at": r[4],
+                "source_episode": r[5],
+                "source_agent": r[6],
+            }
             for r in facts_res.result_set
         ] if facts_res.result_set else []
     except Exception as e:
