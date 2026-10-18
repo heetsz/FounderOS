@@ -1,13 +1,13 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { Fact, streamChat } from "@/lib/api";
+import { Episode, Fact, fetchEpisodes, streamChat } from "@/lib/api";
 import { AgentBadge, AGENT_CONFIG } from "@/components/AgentBadge";
 import { HandoffChip } from "@/components/HandoffChip";
 import { MemoryCard } from "@/components/MemoryCard";
 import { LocalTime } from "@/components/LocalTime";
 import { MarkdownContent } from "@/components/MarkdownContent";
-import { Send, Sparkles, BrainCircuit, ArrowRight, CornerDownLeft, Square } from "lucide-react";
+import { Send, Sparkles, BrainCircuit, ArrowRight, CornerDownLeft, Square, MessageSquare, History } from "lucide-react";
 
 interface MessageItem {
   id: string;
@@ -54,6 +54,8 @@ export const WorkspaceScreen: React.FC<WorkspaceScreenProps> = ({
   const [activeAgent, setActiveAgent] = useState("supervisor");
   const [memoryUsed, setMemoryUsed] = useState<Fact[]>(facts.slice(0, 4));
   const [memoryWritten, setMemoryWritten] = useState<Fact[]>([]);
+  const [chatHistory, setChatHistory] = useState<Episode[]>([]);
+  const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(null);
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const streamAbortRef = useRef<AbortController | null>(null);
 
@@ -70,6 +72,34 @@ export const WorkspaceScreen: React.FC<WorkspaceScreenProps> = ({
   }, [messages, isStreaming]);
 
   useEffect(() => () => streamAbortRef.current?.abort(), []);
+
+  const loadChatHistory = async () => {
+    setChatHistory(await fetchEpisodes(founderId));
+  };
+
+  useEffect(() => {
+    loadChatHistory();
+  }, [founderId]);
+
+  const openHistoryItem = (episode: Episode) => {
+    setSelectedHistoryId(episode.id);
+    setMessages([
+      {
+        id: `${episode.id}_user`,
+        sender: "user",
+        text: episode.user_message || "Original prompt not available for this older turn.",
+        timestamp: episode.ts,
+      },
+      {
+        id: `${episode.id}_agent`,
+        sender: "agent",
+        agentName: episode.agent,
+        text: episode.response || episode.summary,
+        timestamp: episode.ts,
+      },
+    ]);
+    setActiveAgent(episode.agent);
+  };
 
   const AGENT_LIST = [
     { id: "supervisor", name: "Supervisor", desc: "Routes & coordinates" },
@@ -102,6 +132,7 @@ export const WorkspaceScreen: React.FC<WorkspaceScreenProps> = ({
     };
 
     setMessages((prev) => [...prev, userMsg]);
+    setSelectedHistoryId(null);
     setIsStreaming(true);
 
     const agentMsgId = `ag_${Date.now()}`;
@@ -172,6 +203,7 @@ export const WorkspaceScreen: React.FC<WorkspaceScreenProps> = ({
           setMemoryWritten((prev) => [...data.new_facts, ...prev]);
         }
         onRefreshMemory();
+        loadChatHistory();
       },
       onDone: () => {
         setIsStreaming(false);
@@ -207,7 +239,7 @@ export const WorkspaceScreen: React.FC<WorkspaceScreenProps> = ({
   return (
     <div className="flex-1 flex overflow-hidden h-[calc(100vh-56px)] bg-appBg">
       {/* Left Column: 220px Agent list with status dots */}
-      <div className="w-[220px] bg-white border-r border-appBorder p-4 flex flex-col justify-between lg:flex select-none">
+      <div className="w-[260px] bg-white border-r border-appBorder p-4 flex flex-col gap-4 lg:flex select-none overflow-y-auto">
         <div>
           <div className="text-[11px] font-semibold text-textMuted uppercase tracking-wider mb-3">
             Active Team
@@ -242,6 +274,34 @@ export const WorkspaceScreen: React.FC<WorkspaceScreenProps> = ({
                 </div>
               );
             })}
+          </div>
+        </div>
+
+        <div className="min-h-0 flex-1 flex flex-col border-t border-appBorder pt-3">
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-[11px] font-semibold text-textMuted uppercase tracking-wider flex items-center gap-1.5">
+              <History size={12} /> Chat History
+            </div>
+            <button onClick={loadChatHistory} className="text-[10px] text-primary hover:underline">Refresh</button>
+          </div>
+          <div className="space-y-1.5 overflow-y-auto">
+            {chatHistory.length === 0 ? (
+              <p className="text-[10px] text-textMuted py-2">Past agent conversations will appear here.</p>
+            ) : chatHistory.map((episode) => (
+              <button
+                key={episode.id}
+                onClick={() => openHistoryItem(episode)}
+                className={`w-full text-left p-2 rounded-lg border transition-colors ${selectedHistoryId === episode.id ? "border-primary bg-primary-tint/60" : "border-appBorder/70 hover:bg-surfaceAlt"}`}
+              >
+                <span className="flex items-center gap-1.5 text-[10px] font-semibold text-appText">
+                  <MessageSquare size={11} className="text-primary flex-shrink-0" />
+                  <span className="truncate">{episode.user_message || episode.summary}</span>
+                </span>
+                <span className="block mt-1 text-[9px] text-textMuted truncate">
+                  {episode.agent.replaceAll("_", " ")} · {new Date(episode.ts).toLocaleDateString()}
+                </span>
+              </button>
+            ))}
           </div>
         </div>
 

@@ -59,7 +59,7 @@ async def get_episodes(founder_id: str = Query("demo_founder")):
         res = await g.query("""
         MATCH (e:Episode)
         OPTIONAL MATCH (e)-[:BY]->(ag:Agent)
-        RETURN e.id, coalesce(ag.name, e.agent), e.summary, e.ts
+        RETURN e.id, coalesce(ag.name, e.agent), e.summary, e.ts, e.user_message, e.response
         ORDER BY e.ts DESC
         LIMIT 50
         """)
@@ -69,7 +69,9 @@ async def get_episodes(founder_id: str = Query("demo_founder")):
                 "id": r[0],
                 "agent": r[1] or "validator",
                 "summary": r[2] or "Agent reflection turn.",
-                "ts": r[3]
+                "ts": r[3],
+                "user_message": r[4] or "",
+                "response": r[5] or ""
             })
         return episodes
     except Exception as e:

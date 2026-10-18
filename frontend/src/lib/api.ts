@@ -18,6 +18,8 @@ export interface Episode {
   agent: string;
   summary: string;
   ts: number;
+  user_message?: string;
+  response?: string;
 }
 
 export interface Handoff {

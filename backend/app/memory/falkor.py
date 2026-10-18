@@ -236,7 +236,9 @@ async def write_curation(
     tasks: List[Dict[str, Any]] = None,
     artifacts: List[Dict[str, Any]] = None,
     handoff: Optional[Dict[str, Any]] = None,
-    prev_episode_id: Optional[str] = None
+    prev_episode_id: Optional[str] = None,
+    user_message: str = "",
+    response: str = ""
 ) -> Dict[str, Any]:
     """Curator writes the Episode, Facts (with SUPERSEDES), Decisions, Tasks, and Artifacts."""
     g = graph_for(founder_id)
@@ -247,7 +249,7 @@ async def write_curation(
     sess_query = """
     MERGE (s:Session {id: $sid})
     ON CREATE SET s.created_at = $ts, s.status = 'active'
-    CREATE (e:Episode {id: $eid, agent: $agent, summary: $summary, ts: $ts})
+    CREATE (e:Episode {id: $eid, agent: $agent, summary: $summary, user_message: $user_message, response: $response, ts: $ts})
     MERGE (s)-[:HAS_EPISODE]->(e)
     MERGE (ag:Agent {id: $agent})
     ON CREATE SET ag.name = $agent
@@ -259,6 +261,8 @@ async def write_curation(
         "eid": episode_id,
         "agent": agent,
         "summary": summary,
+        "user_message": user_message,
+        "response": response,
         "ts": now
     })
 

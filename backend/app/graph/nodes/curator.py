@@ -128,7 +128,9 @@ async def curator_node(state: FounderState) -> dict:
         decisions=decisions,
         tasks=tasks,
         artifacts=artifacts,
-        handoff=handoff
+        handoff=handoff,
+        user_message=next((message.content for message in reversed(messages) if isinstance(message, HumanMessage)), ""),
+        response=last_response,
     )
 
     logger.info(f"Curator successfully committed episode {curation_result.get('episode_id')} to FalkorDB for {founder_id}")
