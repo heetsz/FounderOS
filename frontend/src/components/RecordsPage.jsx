@@ -1,8 +1,0 @@
-import { useEffect, useState } from 'react'
-import { api, recordData, recordLabel } from '../lib/api'
-
-export default function RecordsPage({ project, type, title }) {
-  const [records, setRecords] = useState([]); const [error, setError] = useState('')
-  useEffect(() => { api(`/projects/${project.id}/${type}s`).then(setRecords).catch((err) => setError(err.message)) }, [project, type])
-  return <div><p className="text-xs font-bold uppercase tracking-[0.18em] text-blue-600">{type} workspace</p><h1 className="mt-2 font-display text-3xl font-semibold">{title}</h1><p className="mt-2 text-sm text-slate-500">These records are stored in and retrieved from the shared project graph.</p>{error && <div className="mt-5 rounded-lg bg-rose-50 p-3 text-sm text-rose-700">{error}</div>}<div className="mt-7 space-y-3">{records.length ? records.map((record) => <article key={record.id} className="rounded-xl border border-slate-200 bg-white p-5"><span className="rounded-md bg-blue-50 px-2 py-1 text-[10px] font-bold uppercase text-blue-700">{type}</span><h2 className="mt-3 font-display text-lg font-semibold">{recordLabel(recordData(record))}</h2><p className="mt-2 text-sm leading-6 text-slate-500">{recordData(record).content || recordData(record).description || 'No additional details.'}</p></article>) : <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-16 text-center"><h2 className="font-display text-lg font-semibold">No {type}s yet</h2><p className="mt-2 text-sm text-slate-500">Create records from the Memory workflow or run an agent from the workspace.</p></div>}</div></div>
-}

@@ -1,11 +1,32 @@
+version: '3.8'
+
 services:
   falkordb:
     image: falkordb/falkordb:latest
+    container_name: founderos-falkordb
     ports:
       - "6379:6379"
+      - "3001:3000"
     volumes:
-      - falkordb-data:/var/lib/falkordb/data
-    restart: unless-stopped
+      - falkor_data:/data
+    restart: always
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: founderos-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - FALKOR_HOST=falkordb
+      - FALKOR_PORT=6379
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+    depends_on:
+      - falkordb
+    restart: always
 
 volumes:
-  falkordb-data:
+  falkor_data:
+
