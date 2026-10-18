@@ -1,158 +1,339 @@
-# FounderOS 🚀
-### Track 2: Agent Memory and Coordination — FalkorDB Graph Hacks
+# FounderOS
 
-> **FounderOS** is an autonomous multi-agent workspace with persistent graph memory that guides founders from rough concept to launch readiness. Built on **FalkorDB** for graph memory, **LangGraph** for multi-agent coordination, and **Google Stitch** light-theme design principles.
+FounderOS is an autonomous AI co-founder workspace that helps founders move from an early idea to launch readiness. It combines a LangGraph specialist team with persistent, tenant-isolated FalkorDB graph memory.
 
----
+## Links
 
-## 🌟 How FounderOS Solves the Track 2 Brief
+- **Live application:** https://founderos-frontend-g1yf.onrender.com/
+- **Demo video:** To be added
+- **Source repository:** https://github.com/heetsz/FounderOS
+- **Track:** Track 2 - Agent Memory and Coordination
 
-| Track 2 Requirement | How FounderOS Implements It | What the Judge Sees in the UI |
-| :--- | :--- | :--- |
-| **Episodic Memory** | Every agent reflection turn is saved as an `Episode` node linked to its `Session`. | Close the browser or reload: agents recall previous decisions and conversational context. |
-| **Semantic Memory** | Extracted facts (ICP, pricing, competitors, risks, TAM) stored as `Fact` nodes. | Right-hand **Memory Panel** shows facts lighting up live during agent streaming. |
-| **Procedural Memory** | Structured `Playbook` nodes (Validation checklist, Pitch architecture, 30/60/90 roadmap). | Specialists cite and follow playbooks stored in the graph. |
-| **Persistent History** | Sessions and episodes are immutable; conflicting/updated facts use `[:SUPERSEDES]`. | **Timeline Screen** provides an unalterable audit trail of decisions. |
-| **Shared State & Handoffs** | All 6 specialists read the same founder graph. Handoffs create `[:HANDOFF]` edges with reasons. | Sleek **Handoff Chips** in chat: e.g. *Validator hands off to Market Scout*. |
-| **Separate Memory Per Tenant** | Dedicated graph per founder: `fos_{founder_id}`. | Different founders asking identical questions receive tenant-isolated answers with zero leakage. |
-| **High-Concurrency Reads/Writes**| Non-blocking async client with connection pooling + parallel simulation endpoint. | **Simulate Screen**: Live counter benchmarks 50 concurrent founders with >130 writes/sec. |
+## What the product demonstrates
 
----
+- **Episodic memory:** Agent turns are stored as immutable `Episode` nodes.
+- **Semantic memory:** Facts such as ICP, pricing, competitors, risks, and TAM are stored as `Fact` nodes.
+- **Procedural memory:** Reusable specialist playbooks are stored as `Playbook` nodes.
+- **Persistent history:** New facts supersede older facts instead of deleting history.
+- **Shared coordination:** Specialist agents share the same founder graph and record `HANDOFF` relationships.
+- **Tenant isolation:** Each founder receives a separate graph named `fos_{founder_id}`.
+- **Execution support:** Decisions, artifacts, and 30/60/90-day tasks are persisted and displayed in the UI.
+- **Concurrency demo:** The Simulate screen creates and writes to multiple founder graphs concurrently.
 
-## 🤖 The Specialist Agent Team
+## Architecture
 
-- **Supervisor Agent:** Reads graph memory context, decides which specialist acts next, approves multi-hop handoffs.
-- **Idea Validator:** Analyzes problem urgency, identifies Ideal Customer Profile (ICP), flags risks, calculates a 0-100 Viability Score.
-- **Market Scout:** Maps direct competitors and incumbents, estimates TAM/SAM/SOM, discovers strategic whitespace wedges.
-- **Business Model:** Formulates the Lean Canvas, structures 3-tier pricing models, projects unit economics (CAC, LTV, payback).
-- **Brand & Pitch:** Crafts brand names, value taglines, 10-slide investor deck outlines, and executive one-pagers.
-- **Launch Planner:** Creates 30/60/90-day roadmaps, formation and legal checklists, and operational Kanban tasks.
-- **Memory Curator:** Runs after each turn to extract new facts, supersede outdated knowledge, and write episodes/decisions to FalkorDB.
+```text
+Next.js frontend
+       |
+       | REST + Server-Sent Events
+       v
+FastAPI backend
+       |
+       +--> LangGraph supervisor and specialist agents
+       |
+       +--> FalkorDB / Redis protocol
+              |
+              +--> fos_{founder_id} tenant graphs
+```
 
----
+### Technology stack
 
-## 🏗️ Architecture & Technology Stack
+- **Frontend:** Next.js 14, React, TypeScript, Tailwind CSS, Lucide Icons
+- **Backend:** FastAPI, Python, Uvicorn, SSE
+- **Agent orchestration:** LangGraph and LangChain
+- **Graph memory:** FalkorDB with the asynchronous Python client
+- **LLM providers:** Groq and Google Gemini, with a built-in fallback simulation engine
+- **Deployment:** Render frontend and backend services, with FalkorDB Cloud for persistent graph storage
 
-- **Memory Layer:** [FalkorDB](https://www.falkordb.com/) (Graph per founder `fos_{founder_id}`, Cypher traversals, multi-tenant isolation)
-- **Agent Orchestrator:** LangGraph (`StateGraph`, conditional routing, multi-hop handoff loop, memory checkpointer)
-- **Backend:** FastAPI, Python 3.11+, Uvicorn, SSE Starlette (`text/event-stream`), FalkorDB Asyncio Client
-- **LLM Routing:** Groq (`llama-3.3-70b-versatile`) for speed/routing + Gemini (`gemini-2.5-flash`) for deep long-form analysis, plus built-in intelligent fallback engine so **anyone can run the project immediately without API keys**.
-- **Frontend:** Next.js 14 (App Router), TypeScript, Tailwind CSS, Lucide Icons, interactive Force-Directed Graph canvas.
-- **Design System:** Designed according to **Google Stitch** clean, calm modern SaaS light-theme specification (`#F8FAFC` background, white cards, `#E2E8F0` borders, `#4F46E5` primary indigo).
+## Specialist team
 
----
+| Agent | Responsibility |
+| --- | --- |
+| Supervisor | Reads memory and routes each request to the appropriate specialist |
+| Idea Validator | Validates urgency, ICP, risks, and viability |
+| Market Scout | Analyzes competitors and TAM/SAM/SOM |
+| Business Model | Builds pricing, Lean Canvas, and unit economics |
+| Brand and Pitch | Creates positioning, taglines, pitch structure, and investor materials |
+| Launch Planner | Produces launch checklists and 30/60/90-day execution plans |
+| Memory Curator | Extracts facts, records episodes, writes decisions, and manages supersession |
 
-## ⚡ Quick Start Guide
+## Graph data model
 
-### 1. Start FalkorDB via Docker
+FounderOS uses one FalkorDB graph per founder. For a founder ID such as `demo_founder`, the graph is `fos_demo_founder`. This provides tenant isolation without mixing unrelated founder memories.
+
+### Node types
+
+| Node | Important properties | Purpose |
+| --- | --- | --- |
+| `Founder` | `id`, `name`, `created_at` | Founder identity |
+| `Startup` | `id`, `name`, `idea`, `stage` | Startup context |
+| `Session` | `id`, `status`, `created_at` | Conversation or work session |
+| `Agent` | `id`, `name` | Specialist identity |
+| `Episode` | `id`, `agent`, `summary`, `ts` | Immutable agent reflection or response |
+| `Fact` | `key`, `kind`, `text`, `confidence`, `updated_at` | Semantic memory |
+| `Playbook` | `name`, `steps`, `version`, `agent` | Procedural memory |
+| `Decision` | `id`, `title`, `rationale`, `ts` | Strategic decisions |
+| `Task` | `id`, `title`, `timeframe`, `status`, `owner` | Execution work |
+| `Artifact` | `id`, `type`, `title`, `content`, `version` | Generated documents |
+
+### Relationship types
+
+```text
+(Founder)-[:OWNS]->(Startup)
+(Startup)-[:HAS_SESSION]->(Session)
+(Session)-[:HAS_EPISODE]->(Episode)
+(Episode)-[:BY]->(Agent)
+(Episode)-[:LEARNED]->(Fact)
+(Fact)-[:ABOUT]->(Startup)
+(Fact)-[:SUPERSEDES]->(Fact)
+(Episode)-[:RESULTED_IN]->(Decision)
+(Decision)-[:BASED_ON]->(Fact)
+(Episode)-[:GENERATED_TASK]->(Task)
+(Artifact)-[:PRODUCED_BY]->(Episode)
+(Episode)-[:HANDOFF]->(Episode)
+```
+
+## Core Cypher queries and graph algorithms
+
+The backend uses parameterized Cypher queries through `backend/app/memory/falkor.py`.
+
+### Create a founder graph
+
+```cypher
+MERGE (f:Founder {id: $fid})
+ON CREATE SET f.name = $name, f.created_at = $ts
+MERGE (s:Startup {id: $sid})
+ON CREATE SET s.name = $sname, s.idea = $idea, s.stage = $stage, s.created_at = $ts
+MERGE (f)-[:OWNS]->(s)
+MERGE (sess:Session {id: $sess_id})
+ON CREATE SET sess.created_at = $ts, sess.status = 'active'
+MERGE (s)-[:HAS_SESSION]->(sess)
+RETURN f.id, s.id, sess.id
+```
+
+### Read current facts
+
+Facts are append-only. A newer fact points to the previous fact with `SUPERSEDES`, so the current state can be read without destroying history.
+
+```cypher
+MATCH (f:Fact)
+WHERE NOT (f)<-[:SUPERSEDES]-()
+OPTIONAL MATCH (e:Episode)-[:LEARNED]->(f)
+RETURN f.key, f.kind, f.text, f.confidence,
+       f.updated_at, e.id, e.agent
+ORDER BY f.updated_at DESC
+LIMIT 25
+```
+
+### Supersede an existing fact
+
+```cypher
+MATCH (old:Fact {key: $key})
+WHERE NOT (old)<-[:SUPERSEDES]-()
+CREATE (new:Fact {
+  key: $key,
+  kind: $kind,
+  text: $text,
+  confidence: $conf,
+  updated_at: $ts
+})
+CREATE (new)-[:SUPERSEDES]->(old)
+```
+
+### Record an agent handoff
+
+```cypher
+MATCH (previous:Episode {id: $prev_id}),
+      (current:Episode {id: $curr_id})
+CREATE (previous)-[:HANDOFF {
+  reason: $reason,
+  ts: $ts
+}]->(current)
+```
+
+### Explain a decision
+
+```cypher
+MATCH (d:Decision {id: $decision_id})
+OPTIONAL MATCH (d)-[:BASED_ON]->(f:Fact)
+OPTIONAL MATCH (e:Episode)-[:LEARNED]->(f)
+RETURN d.id, d.title, d.rationale,
+       collect(f.key), collect(f.text), collect(e.agent)
+```
+
+### Graph visualization
+
+The Memory Explorer traverses nodes and relationships from the current founder graph:
+
+```cypher
+MATCH (n)
+RETURN id(n), labels(n), properties(n)
+LIMIT 200
+
+MATCH (n)-[r]->(m)
+RETURN id(n), type(r), id(m), properties(r)
+LIMIT 400
+```
+
+## Local setup
+
+### Prerequisites
+
+- Python 3.11 or newer
+- Node.js 18 or newer
+- Docker Desktop, for local FalkorDB
+- Optional Groq and Google Gemini API keys
+
+### 1. Start FalkorDB
+
+Using Docker Compose:
+
+```bash
+docker compose up -d falkordb
+```
+
+Or run FalkorDB directly:
+
 ```bash
 docker pull falkordb/falkordb:latest
-docker run -d -p 6379:6379 -p 3001:3000 --name founderos-falkordb falkordb/falkordb:latest
-```
-*Note: Port 6379 is the graph database, and Port 3001 serves the FalkorDB web browser.*
-
-### 2. Run the Backend (FastAPI)
-```bash
-cd backend
-pip install -r requirements.txt
-uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
-```
-*The backend automatically bootstraps FalkorDB indexes and seeds the demo founder `demo_founder`.*
-
-### 3. Run the Frontend (Next.js)
-```bash
-cd frontend
-npm install
-npm run dev
-```
-Open **[http://localhost:3000](http://localhost:3000)** in your browser.
-
----
-
-## 🧪 50-Founder Concurrency Benchmark
-
-To demonstrate high-concurrency multi-tenant writes and reads in FalkorDB:
-
-1. **In the Web UI:** Click **Simulate (Demo)** in the left sidebar and click **"Simulate 50 Founders"**.
-2. **From Terminal:**
-```bash
-python backend/scripts/load_test.py
-```
-This spawns 50 parallel founder tenants simultaneously, creating 50 isolated graphs with episodic turns, measuring throughput (>130 writes/sec) and p95 latency.
-
----
-
-## 📂 Project Structure
-
-```
-FounderOS/
-├── backend/
-│   ├── app/
-│   │   ├── main.py              # FastAPI app, CORS, lifespans, router registration
-│   │   ├── config.py            # Environment configurations & defaults
-│   │   ├── llm/
-│   │   │   └── router.py        # Multi-model LLM router (Groq, Gemini & simulator fallback)
-│   │   ├── graph/
-│   │   │   ├── state.py         # FounderState TypedDict
-│   │   │   ├── builder.py       # LangGraph StateGraph wiring & handoff loop
-│   │   │   └── nodes/           # Supervisor, Validator, Market, Model, Brand, Planner, Curator
-│   │   ├── memory/
-│   │   │   ├── falkor.py        # FalkorDB client, per-founder graph resolver & Cypher queries
-│   │   │   └── seed.py          # Playbook templates & demo founder data
-│   │   └── api/
-│   │       ├── chat.py          # SSE event streaming endpoint (/api/chat/stream)
-│   │       ├── memory.py        # Graph nodes, facts, episodes, handoffs, and explainability
-│   │       ├── founders.py      # Multi-tenant founder provisioning
-│   │       ├── artifacts.py     # Lean Canvas, Pitch Decks, and Roadmaps
-│   │       ├── tasks.py         # 30/60/90 day execution board
-│   │       └── simulate.py      # Concurrency benchmark endpoint
-│   ├── scripts/
-│   │   └── load_test.py         # 50-founder parallel load testing script
-│   ├── Dockerfile
-│   └── requirements.txt
-├── frontend/
-│   ├── src/
-│   │   ├── app/
-│   │   │   ├── layout.tsx       # Root layout & Google Fonts
-│   │   │   ├── globals.css      # Stitch light theme tokens & animations
-│   │   │   └── page.tsx         # Main interactive workspace application
-│   │   ├── components/
-│   │   │   ├── AgentBadge.tsx   # Specialist agent badge with color dots
-│   │   │   ├── HandoffChip.tsx  # Visible agent-to-agent transition pill
-│   │   │   ├── MemoryCard.tsx   # Fact card with confidence, kind & provenance
-│   │   │   ├── StageProgress.tsx# 5-stage milestone progress ring
-│   │   │   ├── GraphCanvas.tsx  # Force-directed FalkorDB graph visualizer
-│   │   │   ├── NodeDrawer.tsx   # Deep node inspection & provenance drawer
-│   │   │   ├── Sidebar.tsx      # White 248px Stitch sidebar
-│   │   │   ├── TopBar.tsx       # Startup status & tenant switcher
-│   │   │   ├── OnboardingModal.tsx # 3-step founder creation modal
-│   │   │   └── screens/         # Workspace, Dashboard, Memory, Timeline, Artifacts, Tasks, Simulate
-│   │   └── lib/
-│   │       └── api.ts           # API client and SSE stream reader
-│   ├── tailwind.config.ts       # Custom Stitch design tokens
-│   └── package.json
-├── docker-compose.yml           # Unified orchestration for FalkorDB + Backend
-└── README.md
+docker run -d \
+  -p 6379:6379 \
+  -p 3001:3000 \
+  -v founderos_falkor_data:/data \
+  --name founderos-falkordb \
+  falkordb/falkordb:latest
 ```
 
----
+### 2. Configure the backend
 
-## 🔑 Environment Variables (Optional)
-
-FounderOS includes an intelligent simulation engine that works 100% out of the box with zero external configuration. If you wish to connect live production API keys, simply set:
+Create `backend/.env` or export these variables in your shell:
 
 ```env
-GROQ_API_KEY=gsk_...
-GOOGLE_API_KEY=AIzaSy...
 FALKOR_HOST=localhost
 FALKOR_PORT=6379
 FALKOR_USERNAME=
 FALKOR_PASSWORD=
+GROQ_API_KEY=
+GOOGLE_API_KEY=
 ```
 
----
+For FalkorDB Cloud, use the connection details shown by the instance:
 
-## 🏆 WeMakeDevs Hackathon Submission Notes
-- **Track:** Track 2 — Agent Memory and Coordination
-- **Repository:** Ready to clone and run
-- **Live Demo Proof:** Run the built-in Simulate tool or launch `load_test.py` to observe isolated graphs created in real-time.
+```env
+FALKOR_HOST=your-cloud-host
+FALKOR_PORT=your-cloud-port
+FALKOR_USERNAME=falkordb
+FALKOR_PASSWORD=your-cloud-password
+```
+
+Never commit `.env` files or API keys.
+
+Install and start the backend:
+
+```bash
+cd backend
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+```
+
+The backend initializes graph indexes and seeds the demo founder on startup.
+
+### 3. Start the frontend
+
+In a second terminal:
+
+```bash
+cd frontend
+npm install
+```
+
+Create `frontend/.env.local`:
+
+```env
+NEXT_PUBLIC_API_URL=http://localhost:8000
+```
+
+Start Next.js:
+
+```bash
+npm run dev
+```
+
+Open http://localhost:3000.
+
+## Docker Compose
+
+To run the local FalkorDB and backend together:
+
+```bash
+docker compose up --build
+```
+
+Then start the frontend separately from `frontend`.
+
+## Live deployment
+
+The current production deployment uses:
+
+- **Frontend:** https://founderos-frontend-g1yf.onrender.com/
+- **Backend:** https://founderos-backend-bs5z.onrender.com/
+- **Database:** FalkorDB Cloud
+
+The Render backend requires these environment variables:
+
+```text
+FALKOR_HOST
+FALKOR_PORT
+FALKOR_USERNAME
+FALKOR_PASSWORD
+GROQ_API_KEY
+GOOGLE_API_KEY
+```
+
+The Render frontend requires:
+
+```text
+NEXT_PUBLIC_API_URL=https://founderos-backend-bs5z.onrender.com
+```
+
+## Demo flow
+
+1. Open the live application.
+2. Create or select a founder workspace.
+3. Ask the specialist team a startup question.
+4. Observe streaming agent responses and visible handoffs.
+5. Open Memory Explorer to inspect facts, episodes, and graph relationships.
+6. Review generated artifacts and roadmap tasks.
+7. Open Simulate to exercise concurrent founder graph writes.
+
+**Demo video:** YouTube link will be added here.
+
+## Project structure
+
+```text
+FounderOS/
+├── backend/
+│   ├── app/
+│   │   ├── api/              # FastAPI routes
+│   │   ├── graph/            # LangGraph state, routing, and specialist nodes
+│   │   ├── llm/              # Groq, Gemini, and fallback model routing
+│   │   ├── memory/           # FalkorDB client, Cypher, seed data
+│   │   ├── config.py
+│   │   └── main.py
+│   ├── scripts/load_test.py  # Concurrent founder simulation
+│   ├── Dockerfile
+│   └── requirements.txt
+├── frontend/
+│   ├── src/app/              # Next.js app router
+│   ├── src/components/       # Screens and reusable UI components
+│   ├── src/lib/api.ts        # REST and SSE client
+│   └── package.json
+├── docker-compose.yml
+└── README.md
+```
+
+## License
+
+This project is provided for the hackathon submission and demonstration.
