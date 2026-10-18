@@ -1,15 +1,34 @@
-# FounderOS
+# FounderOS 🚀
 
-FounderOS is an autonomous AI co-founder workspace that helps founders move from an early idea to launch readiness. It combines a LangGraph specialist team with persistent, tenant-isolated FalkorDB graph memory.
+> An AI co-founder workspace that turns startup ideas into validated decisions, clear roadmaps, and launch-ready artifacts.
 
-## Links
+FounderOS combines a LangGraph specialist team with persistent, tenant-isolated FalkorDB graph memory. Every founder gets a dedicated graph, so conversations, decisions, facts, and tasks remain connected over time.
 
-- **Live application:** https://founderos-frontend-g1yf.onrender.com/
-- **Demo video:** To be added
-- **Source repository:** https://github.com/heetsz/FounderOS
-- **Track:** Track 2 - Agent Memory and Coordination
+## 🔗 Try it
 
-## What the product demonstrates
+| Resource | Link |
+| --- | --- |
+| **Live application** | [Open FounderOS](https://founderos-frontend-g1yf.onrender.com/) |
+| **Source repository** | [github.com/heetsz/FounderOS](https://github.com/heetsz/FounderOS) |
+| **Demo video** | YouTube link coming soon |
+| **Hackathon track** | Track 2 - Agent Memory and Coordination |
+
+<details>
+<summary><strong>Quick navigation</strong></summary>
+
+- [What FounderOS does](#what-founderos-does)
+- [How it works](#how-it-works)
+- [Graph data model](#graph-data-model)
+- [Core Cypher queries](#core-cypher-queries)
+- [Run locally](#run-locally)
+- [Live deployment](#live-deployment)
+- [Demo flow](#demo-flow)
+
+</details>
+
+## What FounderOS does
+
+FounderOS gives founders a team of focused AI specialists instead of one generic chatbot:
 
 - **Episodic memory:** Agent turns are stored as immutable `Episode` nodes.
 - **Semantic memory:** Facts such as ICP, pricing, competitors, risks, and TAM are stored as `Fact` nodes.
@@ -20,7 +39,7 @@ FounderOS is an autonomous AI co-founder workspace that helps founders move from
 - **Execution support:** Decisions, artifacts, and 30/60/90-day tasks are persisted and displayed in the UI.
 - **Concurrency demo:** The Simulate screen creates and writes to multiple founder graphs concurrently.
 
-## Architecture
+## How it works
 
 ```text
 Next.js frontend
@@ -45,7 +64,7 @@ FastAPI backend
 - **LLM providers:** Groq and Google Gemini, with a built-in fallback simulation engine
 - **Deployment:** Render frontend and backend services, with FalkorDB Cloud for persistent graph storage
 
-## Specialist team
+## 🧑‍🚀 Specialist team
 
 | Agent | Responsibility |
 | --- | --- |
@@ -57,9 +76,23 @@ FastAPI backend
 | Launch Planner | Produces launch checklists and 30/60/90-day execution plans |
 | Memory Curator | Extracts facts, records episodes, writes decisions, and manages supersession |
 
-## Graph data model
+## 🧠 Graph data model
 
 FounderOS uses one FalkorDB graph per founder. For a founder ID such as `demo_founder`, the graph is `fos_demo_founder`. This provides tenant isolation without mixing unrelated founder memories.
+
+### Memory lifecycle
+
+```text
+Founder idea
+    ↓
+Agent episode
+    ↓
+Facts + decisions + tasks + artifacts
+    ↓
+New evidence supersedes old facts
+    ↓
+Persistent founder memory
+```
 
 ### Node types
 
@@ -93,9 +126,20 @@ FounderOS uses one FalkorDB graph per founder. For a founder ID such as `demo_fo
 (Episode)-[:HANDOFF]->(Episode)
 ```
 
-## Core Cypher queries and graph algorithms
+## ⚙️ Core Cypher queries
 
 The backend uses parameterized Cypher queries through `backend/app/memory/falkor.py`.
+
+<details>
+<summary><strong>Why this graph model?</strong></summary>
+
+- Episodes preserve the history of what an agent said or learned.
+- Facts provide reusable semantic memory across future conversations.
+- `SUPERSEDES` preserves old information while exposing the latest version.
+- Decisions can be traced back to the facts and episodes that supported them.
+- Handoffs make multi-agent coordination visible and explainable.
+
+</details>
 
 ### Create a founder graph
 
@@ -175,7 +219,7 @@ RETURN id(n), type(r), id(m), properties(r)
 LIMIT 400
 ```
 
-## Local setup
+## 🛠️ Run locally
 
 ### Prerequisites
 
@@ -263,7 +307,7 @@ npm run dev
 
 Open http://localhost:3000.
 
-## Docker Compose
+### One-command backend + database
 
 To run the local FalkorDB and backend together:
 
@@ -273,7 +317,7 @@ docker compose up --build
 
 Then start the frontend separately from `frontend`.
 
-## Live deployment
+## ☁️ Live deployment
 
 The current production deployment uses:
 
@@ -298,7 +342,7 @@ The Render frontend requires:
 NEXT_PUBLIC_API_URL=https://founderos-backend-bs5z.onrender.com
 ```
 
-## Demo flow
+## 🎬 Demo flow
 
 1. Open the live application.
 2. Create or select a founder workspace.
@@ -308,7 +352,7 @@ NEXT_PUBLIC_API_URL=https://founderos-backend-bs5z.onrender.com
 6. Review generated artifacts and roadmap tasks.
 7. Open Simulate to exercise concurrent founder graph writes.
 
-**Demo video:** YouTube link will be added here.
+> **Demo video:** YouTube link will be added here.
 
 ## Project structure
 
