@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { Artifact, fetchArtifacts } from "@/lib/api";
 import { FileText, Copy, Check, Download, Layers, Sparkles } from "lucide-react";
+import { MarkdownContent } from "@/components/MarkdownContent";
 
 interface ArtifactsScreenProps {
   founderId: string;
@@ -146,9 +147,7 @@ export const ArtifactsScreen: React.FC<ArtifactsScreenProps> = ({ founderId }) =
               </div>
             </div>
 
-            <div className="prose prose-sm max-w-none text-appText leading-relaxed whitespace-pre-wrap font-sans text-xs md:text-sm">
-              {selectedArtifact.content}
-            </div>
+            <MarkdownContent content={selectedArtifact.content} className="font-sans text-xs md:text-sm" />
           </div>
         ) : (
           <div className="h-full flex items-center justify-center text-xs text-textMuted">

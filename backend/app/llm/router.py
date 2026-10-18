@@ -35,17 +35,19 @@ class MockAgentChatModel(BaseChatModel):
         return self._generate(messages, stop, **kwargs)
 
     def _simulate_response(self, system_prompt: str, user_prompt: str) -> str:
-        prompt_lower = (system_prompt + " " + user_prompt).lower()
+        system_lower = system_prompt.lower()
+        prompt_lower = user_prompt.lower()
 
         # 1. Routing / Supervisor task
-        if "route" in prompt_lower or "supervisor" in prompt_lower or "select specialist" in prompt_lower:
-            if "market" in prompt_lower or "competitor" in prompt_lower or "tam" in prompt_lower:
+        if "select specialist" in system_lower or "supervisor agent" in system_lower:
+            request = prompt_lower.split("founder message:", 1)[-1].split("known facts:", 1)[0].strip()
+            if any(term in request for term in ("market", "competitor", "tam", "sam", "som")):
                 agent = "market_scout"
-            elif "price" in prompt_lower or "business model" in prompt_lower or "revenue" in prompt_lower or "canvas" in prompt_lower:
+            elif any(term in request for term in ("price", "pricing", "business model", "revenue", "canvas", "unit economics")):
                 agent = "business_model"
-            elif "pitch" in prompt_lower or "deck" in prompt_lower or "brand" in prompt_lower or "name" in prompt_lower or "tagline" in prompt_lower:
+            elif any(term in request for term in ("pitch", "deck", "brand", "name", "tagline", "one-pager")):
                 agent = "brand_pitch"
-            elif "roadmap" in prompt_lower or "task" in prompt_lower or "launch" in prompt_lower or "90 day" in prompt_lower:
+            elif any(term in request for term in ("roadmap", "task", "launch", "90 day", "90-day")):
                 agent = "launch_planner"
             else:
                 agent = "validator"
@@ -55,7 +57,7 @@ class MockAgentChatModel(BaseChatModel):
             })
 
         # 2. Fact / Curator extraction
-        if "extract" in prompt_lower or "curator" in prompt_lower:
+        if "memory curator" in system_lower:
             return json.dumps({
                 "summary": "Analyzed startup strategy and updated knowledge graph with foundational facts and next actions.",
                 "new_facts": [
@@ -91,7 +93,7 @@ class MockAgentChatModel(BaseChatModel):
             })
 
         # 3. Idea Validator response
-        if "validator" in prompt_lower:
+        if "idea validator agent" in system_lower or (not system_lower and "validator" in prompt_lower):
             return (
                 "### 🔍 Idea Validation Assessment\n\n"
                 "**1. Core Problem & Urgency**\n"
@@ -110,7 +112,7 @@ class MockAgentChatModel(BaseChatModel):
             )
 
         # 4. Market Scout response
-        if "market_scout" in prompt_lower or "market" in prompt_lower:
+        if "market scout agent" in system_lower or (not system_lower and ("market_scout" in prompt_lower or "market" in prompt_lower)):
             return (
                 "### 🌐 Market Intelligence & Competitive Radar\n\n"
                 "**1. Competitive Matrix**\n"
@@ -126,7 +128,7 @@ class MockAgentChatModel(BaseChatModel):
             )
 
         # 5. Business Model response
-        if "business_model" in prompt_lower or "model" in prompt_lower or "pricing" in prompt_lower:
+        if "business model agent" in system_lower or (not system_lower and ("business_model" in prompt_lower or "model" in prompt_lower or "pricing" in prompt_lower)):
             return (
                 "### 💼 Business Model & Unit Economics Blueprint\n\n"
                 "**1. Monetization Strategy: Hybrid Subscription + Usage**\n"
@@ -141,7 +143,7 @@ class MockAgentChatModel(BaseChatModel):
             )
 
         # 6. Brand & Pitch response
-        if "brand" in prompt_lower or "pitch" in prompt_lower:
+        if "brand & pitch agent" in system_lower or "brand and pitch agent" in system_lower or (not system_lower and ("brand" in prompt_lower or "pitch" in prompt_lower)):
             return (
                 "### ⚡ Brand Identity & 10-Slide Pitch Outline\n\n"
                 "**1. Brand Concept & Naming**\n"
@@ -161,7 +163,7 @@ class MockAgentChatModel(BaseChatModel):
             )
 
         # 7. Launch Planner response
-        if "launch" in prompt_lower or "planner" in prompt_lower or "task" in prompt_lower:
+        if "launch planner agent" in system_lower or (not system_lower and ("launch" in prompt_lower or "planner" in prompt_lower or "task" in prompt_lower)):
             return (
                 "### 🚀 30 / 60 / 90-Day Execution Roadmap\n\n"
                 "**Phase 1: Day 1 - 30 (Foundation & Alpha)**\n"

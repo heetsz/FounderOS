@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { Episode, Handoff, fetchEpisodes, fetchHandoffs } from "@/lib/api";
 import { AgentBadge } from "@/components/AgentBadge";
+import { MarkdownContent } from "@/components/MarkdownContent";
 import { GitCommit, Clock, ArrowRight, RefreshCw, Layers } from "lucide-react";
 
 interface TimelineScreenProps {
@@ -89,9 +90,7 @@ export const TimelineScreen: React.FC<TimelineScreenProps> = ({ founderId }) => 
                     </span>
                   </div>
 
-                  <p className="text-xs text-appText leading-relaxed font-normal">
-                    {ep.summary}
-                  </p>
+                  <MarkdownContent content={ep.summary} className="text-xs leading-relaxed" />
 
                   {/* Handoff chip if present */}
                   {matchingHandoff && (

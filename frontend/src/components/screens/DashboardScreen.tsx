@@ -3,6 +3,7 @@
 import React from "react";
 import { Fact, Task, Episode, FounderInfo } from "@/lib/api";
 import { StageProgress } from "@/components/StageProgress";
+import { MarkdownContent } from "@/components/MarkdownContent";
 import { AgentBadge } from "@/components/AgentBadge";
 import {
   Sparkles,
@@ -229,9 +230,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
                       {fact.source_agent ? `Learned via ${fact.source_agent}` : "FalkorDB Fact"}
                     </span>
                   </div>
-                  <p className="text-xs text-appText leading-relaxed">
-                    {fact.text}
-                  </p>
+                  <MarkdownContent content={fact.text} className="text-xs leading-relaxed" />
                 </div>
                 <span className="text-[10px] font-semibold text-success flex items-center gap-0.5 flex-shrink-0">
                   {Math.round((fact.confidence || 0.9) * 100)}%

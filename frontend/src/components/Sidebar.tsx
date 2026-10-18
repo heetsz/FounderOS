@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import type { LucideIcon } from "lucide-react";
 import {
   LayoutDashboard,
   Bot,
@@ -33,7 +34,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onTabChange,
   founderId,
 }) => {
-  const NAV_ITEMS: { id: NavItem; label: string; icon: React.ComponentType<{ size: number }> }[] = [
+  const NAV_ITEMS: { id: NavItem; label: string; icon: LucideIcon }[] = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
     { id: "workspace", label: "Agent Workspace", icon: Bot },
     { id: "memory", label: "Memory Explorer", icon: BrainCircuit },
@@ -68,7 +69,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </span>
             </h1>
             <p className="text-[10px] text-textMuted font-medium leading-none">
-              Track 2 · FalkorDB Memory
+              FalkorDB Memory
             </p>
           </div>
         </div>

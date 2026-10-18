@@ -1,6 +1,7 @@
 import React from "react";
 import { GraphNode } from "@/lib/api";
 import { X, ExternalLink, Calendar, Key, ShieldCheck, Tag } from "lucide-react";
+import { MarkdownContent } from "@/components/MarkdownContent";
 
 interface NodeDrawerProps {
   node: GraphNode | null;
@@ -45,8 +46,8 @@ export const NodeDrawer: React.FC<NodeDrawerProps> = ({ node, onClose }) => {
 
       {/* Main text if available */}
       {props.text && (
-        <div className="bg-surfaceAlt/70 border border-appBorder/80 rounded-lg p-2.5 mb-3 text-xs text-appText leading-relaxed">
-          {props.text}
+        <div className="bg-surfaceAlt/70 border border-appBorder/80 rounded-lg p-2.5 mb-3">
+          <MarkdownContent content={String(props.text)} className="text-xs leading-relaxed" />
         </div>
       )}
 

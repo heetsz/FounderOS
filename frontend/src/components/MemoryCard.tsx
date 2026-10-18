@@ -1,6 +1,8 @@
 import React from "react";
 import { Fact } from "@/lib/api";
 import { Sparkles, CheckCircle2, Clock } from "lucide-react";
+import { LocalTime } from "@/components/LocalTime";
+import { MarkdownContent } from "@/components/MarkdownContent";
 
 interface MemoryCardProps {
   fact: Fact;
@@ -47,9 +49,7 @@ export const MemoryCard: React.FC<MemoryCardProps> = ({ fact, isNew }) => {
         </div>
       </div>
 
-      <p className="text-xs text-appText leading-relaxed mb-2 font-normal">
-        {fact.text}
-      </p>
+      <MarkdownContent content={fact.text} className="mb-2 text-xs leading-relaxed" />
 
       <div className="flex items-center justify-between text-[10px] text-textMuted border-t border-appBorder/60 pt-1.5">
         <div className="flex items-center gap-1">
@@ -65,7 +65,7 @@ export const MemoryCard: React.FC<MemoryCardProps> = ({ fact, isNew }) => {
         {fact.updated_at && (
           <span className="flex items-center gap-1">
             <Clock size={10} />
-            {new Date(fact.updated_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+            <LocalTime timestamp={fact.updated_at} />
           </span>
         )}
       </div>

@@ -5,6 +5,8 @@ import { Fact, streamChat } from "@/lib/api";
 import { AgentBadge, AGENT_CONFIG } from "@/components/AgentBadge";
 import { HandoffChip } from "@/components/HandoffChip";
 import { MemoryCard } from "@/components/MemoryCard";
+import { LocalTime } from "@/components/LocalTime";
+import { MarkdownContent } from "@/components/MarkdownContent";
 import { Send, Sparkles, BrainCircuit, ArrowRight, CornerDownLeft } from "lucide-react";
 
 interface MessageItem {
@@ -155,6 +157,18 @@ export const WorkspaceScreen: React.FC<WorkspaceScreenProps> = ({
       },
       onError: (err) => {
         console.error("Chat streaming error:", err);
+        const details = err instanceof Error ? err.message : String(err);
+        setMessages((prev) =>
+          prev.map((message) =>
+            message.id === agentMsgId
+              ? {
+                  ...message,
+                  agentName: "supervisor",
+                  text: `I couldn't complete that response. ${details}`,
+                }
+              : message,
+          ),
+        );
         setIsStreaming(false);
       },
     });
@@ -163,7 +177,7 @@ export const WorkspaceScreen: React.FC<WorkspaceScreenProps> = ({
   return (
     <div className="flex-1 flex overflow-hidden h-[calc(100vh-56px)] bg-appBg">
       {/* Left Column: 220px Agent list with status dots */}
-      <div className="w-[220px] bg-white border-r border-appBorder p-4 flex flex-col justify-between hidden lg:flex select-none">
+      <div className="w-[220px] bg-white border-r border-appBorder p-4 flex flex-col justify-between lg:flex select-none">
         <div>
           <div className="text-[11px] font-semibold text-textMuted uppercase tracking-wider mb-3">
             Active Team
@@ -235,10 +249,7 @@ export const WorkspaceScreen: React.FC<WorkspaceScreenProps> = ({
                   <div className="mb-1.5 flex items-center gap-2">
                     <AgentBadge agent={item.agentName} size="sm" />
                     <span className="text-[10px] text-textMuted">
-                      {new Date(item.timestamp).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
+                      <LocalTime timestamp={item.timestamp} />
                     </span>
                   </div>
                 )}
@@ -250,7 +261,9 @@ export const WorkspaceScreen: React.FC<WorkspaceScreenProps> = ({
                       : "bg-surface border border-appBorder text-appText rounded-bl-none shadow-card"
                   }`}
                 >
-                  {item.text || (
+                  {item.text ? (
+                    isUser ? item.text : <MarkdownContent content={item.text} />
+                  ) : (
                     <span className="inline-flex items-center gap-1.5 text-textMuted italic">
                       <span className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce" />
                       Thinking with FalkorDB graph memory...
@@ -310,7 +323,7 @@ export const WorkspaceScreen: React.FC<WorkspaceScreenProps> = ({
       </div>
 
       {/* Right Column: 340px Memory Panel (Demo Highlight) */}
-      <div className="w-[340px] bg-white border-l border-appBorder p-4 flex flex-col justify-between hidden xl:flex overflow-y-auto">
+      <div className="w-[340px] bg-white border-l border-appBorder p-4  flex-col justify-between  xl:flex overflow-y-auto">
         <div className="space-y-5">
           {/* Header */}
           <div className="flex items-center justify-between pb-3 border-b border-appBorder">
