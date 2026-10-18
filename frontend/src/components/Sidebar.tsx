@@ -101,29 +101,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
           })}
         </nav>
 
-        {/* Agent Team Status */}
-        <div className="px-4 pt-4 border-t border-appBorder/80">
-          <h4 className="text-[10px] font-semibold text-textMuted uppercase tracking-wider mb-2 flex items-center gap-1">
-            <Sparkles size={11} /> Agent Specialists
-          </h4>
-          <div className="space-y-1.5">
-            {AGENTS.map((ag) => (
-              <div
-                key={ag.id}
-                className="flex items-center justify-between text-[11px] text-slate-700 py-1 px-2 rounded hover:bg-surfaceAlt transition-colors"
-              >
-                <div className="flex items-center gap-2">
-                  <span
-                    className="w-2 h-2 rounded-full flex-shrink-0"
-                    style={{ backgroundColor: ag.dot }}
-                  />
-                  <span>{ag.name}</span>
-                </div>
-                <span className="w-1.5 h-1.5 rounded-full bg-success flex-shrink-0" title="Online" />
-              </div>
-            ))}
-          </div>
-        </div>
       </div>
 
       {/* Footer */}
