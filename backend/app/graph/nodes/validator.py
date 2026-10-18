@@ -1,4 +1,5 @@
 import logging
+import re
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 from app.graph.state import FounderState
 from app.llm.router import get_llm
@@ -12,6 +13,8 @@ Follow the 'Idea Validation Playbook':
 2. Hyper-specific ICP
 3. Technical/Regulatory/Adoption risks
 4. Viability score (0-100)
+
+Include exactly one line formatted as `Validation Score: <integer>/100` in your assessment. The integer must be a numeric score from 0 through 100, based on the evidence provided. Do not use a range or percentage word in place of the number.
 
 Always ground your feedback in known facts stored in the founder's graph memory.
 If the founder's idea is solid and needs competitive analysis or market sizing, recommend handing off to 'market_scout'.
@@ -39,6 +42,9 @@ async def validator_node(state: FounderState) -> dict:
     ])
     text = response.content
 
+    score_match = re.search(r"(?im)^\s*(?:\*{0,2})?(?:\d+\.\s*)?(?:validation|viability)\s+score\s*(?:\*{0,2})\s*:\s*(\d{1,3})\s*(?:/\s*100)?", text)
+    validation_score = min(100, max(0, int(score_match.group(1)))) if score_match else None
+
     # Determine if handoff should occur (if hops < 2 and competitive research needed)
     handoff = None
     if state.get("hops", 0) < 2 and ("market" in text.lower() or "competitor" in text.lower() or "score" in text.lower()):
@@ -51,6 +57,7 @@ async def validator_node(state: FounderState) -> dict:
     return {
         "messages": [AIMessage(content=text, name="validator")],
         "response_stream": text,
-        "handoff": handoff
+        "handoff": handoff,
+        "validation_score": validation_score
     }
 

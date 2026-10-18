@@ -5,6 +5,7 @@ export interface Fact {
   kind: string;
   text: string;
   confidence: number;
+  numeric_value?: number;
   updated_at?: number;
   source_episode?: string;
   source_agent?: string;
@@ -171,6 +172,7 @@ export async function runSimulation(numFounders: number = 50): Promise<any> {
 export async function streamChat(
   founderId: string,
   message: string,
+  signal: AbortSignal,
   callbacks: {
     onToken: (token: string, agent: string) => void;
     onAgentChanged: (agent: string, reason: string) => void;
@@ -185,6 +187,7 @@ export async function streamChat(
     const response = await fetch(`${API_BASE}/api/chat/stream`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      signal,
       body: JSON.stringify({
         founder_id: founderId,
         message: message,
@@ -256,6 +259,8 @@ export async function streamChat(
     if (buffer.trim()) dispatchEvent(buffer);
     if (!completed) callbacks.onError("The chat stream ended before the agent completed its response.");
   } catch (err) {
-    callbacks.onError(err);
+    if (!(err instanceof DOMException && err.name === "AbortError")) {
+      callbacks.onError(err);
+    }
   }
 }

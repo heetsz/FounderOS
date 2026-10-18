@@ -1,4 +1,5 @@
 import logging
+import re
 from typing import Optional
 from fastapi import APIRouter, Query, HTTPException
 from app.memory.falkor import graph_for, get_graph_visualization
@@ -25,20 +26,25 @@ async def get_facts(founder_id: str = Query("demo_founder")):
         MATCH (f:Fact)
         WHERE NOT (f)<-[:SUPERSEDES]-()
         OPTIONAL MATCH (e:Episode)-[:LEARNED]->(f)
-        RETURN f.key, f.kind, f.text, f.confidence, f.updated_at, e.id, e.agent
+        RETURN f.key, f.kind, f.text, f.confidence, f.numeric_value, f.updated_at, e.id, e.agent
         ORDER BY f.updated_at DESC
         LIMIT 50
         """)
         facts = []
         for r in (res.result_set or []):
+            numeric_value = r[4]
+            if numeric_value is None and r[0] == "validation_score" and r[2]:
+                match = re.search(r"(?:validation|viability)\s+score\s*:\s*(\d{1,3})\s*(?:/\s*100)?", r[2], re.IGNORECASE)
+                numeric_value = float(match.group(1)) if match else None
             facts.append({
                 "key": r[0],
                 "kind": r[1] or "general",
                 "text": r[2],
                 "confidence": r[3] or 0.9,
-                "updated_at": r[4],
-                "source_episode": r[5],
-                "source_agent": r[6]
+                "numeric_value": numeric_value,
+                "updated_at": r[5],
+                "source_episode": r[6],
+                "source_agent": r[7]
             })
         return facts
     except Exception as e:

@@ -36,6 +36,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
   const hasValidation = facts.some((f) => f.kind === "customer" || f.key.includes("icp"));
   const hasMarket = facts.some((f) => f.kind === "competitor" || f.key.includes("tam"));
   const hasPricing = facts.some((f) => f.kind === "pricing");
+  const validationScore = facts.find((fact) => fact.key === "validation_score" && typeof fact.numeric_value === "number")?.numeric_value;
 
   const completedStages = ["validate"];
   if (hasMarket) completedStages.push("research");
@@ -151,10 +152,10 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
             <TrendingUp size={16} className="text-emerald-500" />
           </div>
           <div className="text-2xl font-bold font-heading text-appText">
-            86 / 100
+            {validationScore === undefined ? "Not scored" : `${validationScore} / 100`}
           </div>
           <div className="text-[11px] text-emerald-600 font-medium mt-1">
-            High WTP confirmed
+            {validationScore === undefined ? "Run Idea Validator to score viability" : "Latest Idea Validator score"}
           </div>
         </div>
       </div>

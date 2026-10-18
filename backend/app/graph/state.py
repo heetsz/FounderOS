@@ -13,4 +13,5 @@ class FounderState(TypedDict):
     new_facts: List[Dict[str, Any]]      # produced by the curator
     hops: int                            # count to prevent loops (max 3 hops)
     response_stream: Optional[str]       # text produced by specialist
+    validation_score: Optional[int]      # numeric 0-100 Idea Validator score
 

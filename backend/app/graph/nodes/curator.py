@@ -80,6 +80,16 @@ async def curator_node(state: FounderState) -> dict:
 
     summary = data.get("summary", f"{agent} provided recommendations.")
     new_facts = data.get("new_facts", [])
+    validation_score = state.get("validation_score")
+    if agent == "validator" and isinstance(validation_score, int):
+        new_facts = [fact for fact in new_facts if fact.get("key") != "validation_score"]
+        new_facts.append({
+            "key": "validation_score",
+            "kind": "metric",
+            "text": f"Idea viability score: {validation_score}/100",
+            "numeric_value": validation_score,
+            "confidence": 0.9,
+        })
     decisions = data.get("decisions", [])
     tasks = data.get("tasks", [])
     artifacts = data.get("artifacts", [])

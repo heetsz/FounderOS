@@ -7,7 +7,7 @@ import { HandoffChip } from "@/components/HandoffChip";
 import { MemoryCard } from "@/components/MemoryCard";
 import { LocalTime } from "@/components/LocalTime";
 import { MarkdownContent } from "@/components/MarkdownContent";
-import { Send, Sparkles, BrainCircuit, ArrowRight, CornerDownLeft } from "lucide-react";
+import { Send, Sparkles, BrainCircuit, ArrowRight, CornerDownLeft, Square } from "lucide-react";
 
 interface MessageItem {
   id: string;
@@ -55,6 +55,7 @@ export const WorkspaceScreen: React.FC<WorkspaceScreenProps> = ({
   const [memoryUsed, setMemoryUsed] = useState<Fact[]>(facts.slice(0, 4));
   const [memoryWritten, setMemoryWritten] = useState<Fact[]>([]);
   const chatScrollRef = useRef<HTMLDivElement>(null);
+  const streamAbortRef = useRef<AbortController | null>(null);
 
   // Sync memoryUsed when initial facts load
   useEffect(() => {
@@ -67,6 +68,8 @@ export const WorkspaceScreen: React.FC<WorkspaceScreenProps> = ({
   useEffect(() => {
     chatScrollRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isStreaming]);
+
+  useEffect(() => () => streamAbortRef.current?.abort(), []);
 
   const AGENT_LIST = [
     { id: "supervisor", name: "Supervisor", desc: "Routes & coordinates" },
@@ -117,7 +120,9 @@ export const WorkspaceScreen: React.FC<WorkspaceScreenProps> = ({
       },
     ]);
 
-    await streamChat(founderId, textToSend, {
+    const controller = new AbortController();
+    streamAbortRef.current = controller;
+    await streamChat(founderId, textToSend, controller.signal, {
       onToken: (token, agent) => {
         currentAgentText += token;
         currentAgentName = agent;
@@ -170,6 +175,7 @@ export const WorkspaceScreen: React.FC<WorkspaceScreenProps> = ({
       },
       onDone: () => {
         setIsStreaming(false);
+        streamAbortRef.current = null;
       },
       onError: (err) => {
         console.error("Chat streaming error:", err);
@@ -186,8 +192,16 @@ export const WorkspaceScreen: React.FC<WorkspaceScreenProps> = ({
           ),
         );
         setIsStreaming(false);
+        streamAbortRef.current = null;
       },
     });
+    if (streamAbortRef.current === controller) streamAbortRef.current = null;
+  };
+
+  const handleStopResponse = () => {
+    streamAbortRef.current?.abort();
+    streamAbortRef.current = null;
+    setIsStreaming(false);
   };
 
   return (
@@ -364,14 +378,27 @@ export const WorkspaceScreen: React.FC<WorkspaceScreenProps> = ({
               disabled={isStreaming}
               className="flex-1 bg-surfaceAlt border border-appBorder rounded-card px-4 py-3 text-sm text-appText placeholder-textMuted focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
             />
-            <button
-              type="submit"
-              disabled={!inputText.trim() || isStreaming}
-              className="px-5 py-3 rounded-card bg-primary hover:bg-primary-hover text-white text-sm font-semibold flex items-center gap-1.5 shadow-sm transition-colors disabled:opacity-50"
-            >
-              <span>Send</span>
-              <CornerDownLeft size={14} />
-            </button>
+            {isStreaming ? (
+              <button
+                type="button"
+                onClick={handleStopResponse}
+                aria-label="Stop response"
+                title="Stop response"
+                className="px-4 py-3 rounded-card bg-rose-600 hover:bg-rose-700 text-white text-sm font-semibold flex items-center gap-1.5 shadow-sm transition-colors"
+              >
+                <Square size={13} fill="currentColor" />
+                <span>Stop</span>
+              </button>
+            ) : (
+              <button
+                type="submit"
+                disabled={!inputText.trim()}
+                className="px-5 py-3 rounded-card bg-primary hover:bg-primary-hover text-white text-sm font-semibold flex items-center gap-1.5 shadow-sm transition-colors disabled:opacity-50"
+              >
+                <span>Send</span>
+                <CornerDownLeft size={14} />
+              </button>
+            )}
           </form>
         </div>
       </div>

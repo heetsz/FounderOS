@@ -1,6 +1,6 @@
-import React from "react";
+import React, { useState } from "react";
 import { GraphNode } from "@/lib/api";
-import { X, ExternalLink, Calendar, Key, ShieldCheck, Tag } from "lucide-react";
+import { X, Calendar, Key, ShieldCheck, Tag, ChevronDown, ChevronUp } from "lucide-react";
 import { MarkdownContent } from "@/components/MarkdownContent";
 
 interface NodeDrawerProps {
@@ -9,6 +9,8 @@ interface NodeDrawerProps {
 }
 
 export const NodeDrawer: React.FC<NodeDrawerProps> = ({ node, onClose }) => {
+  const [expandedSummaryId, setExpandedSummaryId] = useState<string | null>(null);
+
   if (!node) return null;
 
   const props = node.properties || {};
@@ -100,6 +102,30 @@ export const NodeDrawer: React.FC<NodeDrawerProps> = ({ node, onClose }) => {
           <div className="border border-appBorder rounded-lg divide-y divide-appBorder text-[11px]">
             {Object.entries(props).map(([k, v]) => {
               if (["text", "title", "name"].includes(k)) return null;
+              if (k === "summary") {
+                const summaryText = String(v);
+                const expanded = expandedSummaryId === node.id;
+                const shouldTruncate = summaryText.length > 140 && !expanded;
+                return (
+                  <div key={k} className="flex flex-col gap-1 p-1.5">
+                    <span className="text-textMuted capitalize">{k.replace("_", " ")}</span>
+                    <span className="text-appText leading-relaxed">
+                      {shouldTruncate ? `${summaryText.slice(0, 140).trimEnd()}…` : summaryText}
+                    </span>
+                    {summaryText.length > 140 && (
+                      <button
+                        type="button"
+                        onClick={() => setExpandedSummaryId(expanded ? null : node.id)}
+                        className="self-start inline-flex items-center gap-1 text-[10px] font-semibold text-primary hover:text-primary-hover"
+                        aria-expanded={expanded}
+                      >
+                        {expanded ? "Show less" : "Read more"}
+                        {expanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                      </button>
+                    )}
+                  </div>
+                );
+              }
               return (
                 <div key={k} className="flex justify-between p-1.5">
                   <span className="text-textMuted capitalize">{k.replace("_", " ")}</span>

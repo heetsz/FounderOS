@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState, useMemo } from "react";
 import { GraphData, GraphNode, GraphEdge } from "@/lib/api";
-import { ZoomIn, ZoomOut, RotateCcw, Filter, Search } from "lucide-react";
+import { ZoomIn, ZoomOut, RotateCcw, Filter, Search, Maximize2, Minimize2, X, Play } from "lucide-react";
 
 interface GraphCanvasProps {
   data: GraphData;
@@ -31,12 +31,15 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [queryInput, setQueryInput] = useState("");
+  const [graphQuery, setGraphQuery] = useState("");
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isDraggingCanvas, setIsDraggingCanvas] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [draggedNode, setDraggedNode] = useState<GraphNode | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
 
   // Positioned nodes simulation state
   const [simNodes, setSimNodes] = useState<GraphNode[]>([]);
@@ -124,17 +127,33 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
       if (activeFilters.length > 0 && !activeFilters.includes(n.label)) {
         return false;
       }
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
-        return (
-          n.title.toLowerCase().includes(q) ||
-          n.label.toLowerCase().includes(q) ||
-          JSON.stringify(n.properties).toLowerCase().includes(q)
-        );
-      }
       return true;
     });
-  }, [simNodes, activeFilters, searchQuery]);
+  }, [simNodes, activeFilters]);
+
+  const matchingNodeIds = useMemo(() => {
+    const stopWords = new Set(["show", "find", "what", "which", "where", "when", "from", "about", "with", "that", "this", "these", "those", "the", "and", "for", "all", "are", "was", "were", "has", "have", "into", "graph", "node", "nodes", "related", "trace", "please", "me", "our"]);
+    const aliases: Record<string, string> = {
+      facts: "fact", decisions: "decision", episodes: "episode", tasks: "task",
+      artifacts: "artifact", competitors: "competitor", playbooks: "playbook",
+      customers: "customer", risks: "risk", prices: "price",
+    };
+    const terms = graphQuery
+      .toLowerCase()
+      .split(/[^a-z0-9]+/)
+      .map((term) => aliases[term] || term)
+      .filter((term) => term.length > 2 && !stopWords.has(term));
+    if (!terms.length) return new Set<string>();
+
+    return new Set(
+      visibleNodes
+        .filter((node) => {
+          const searchable = `${node.title} ${node.label} ${JSON.stringify(node.properties)}`.toLowerCase();
+          return terms.some((term) => searchable.includes(term));
+        })
+        .map((node) => node.id),
+    );
+  }, [graphQuery, visibleNodes]);
 
   const visibleNodeIds = useMemo(() => new Set(visibleNodes.map((n) => n.id)), [visibleNodes]);
 
@@ -144,6 +163,21 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
     );
   }, [data.edges, visibleNodeIds]);
 
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const resizeObserver = new ResizeObserver(([entry]) => {
+      setCanvasSize({ width: entry.contentRect.width, height: entry.contentRect.height });
+    });
+    resizeObserver.observe(container);
+    const handleFullscreenChange = () => setIsFullscreen(document.fullscreenElement === container);
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () => {
+      resizeObserver.disconnect();
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+    };
+  }, []);
+
   // Render to canvas
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -151,8 +185,8 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const width = containerRef.current?.clientWidth || 700;
-    const height = containerRef.current?.clientHeight || 500;
+    const width = canvasSize.width || containerRef.current?.clientWidth || 700;
+    const height = canvasSize.height || containerRef.current?.clientHeight || 500;
     canvas.width = width * window.devicePixelRatio;
     canvas.height = height * window.devicePixelRatio;
     ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
@@ -170,11 +204,13 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
       if (!src || !tgt || src.x === undefined || tgt.x === undefined) return;
 
       const isHighlight =
-        selectedNodeId && (edge.source === selectedNodeId || edge.target === selectedNodeId);
+        (selectedNodeId && (edge.source === selectedNodeId || edge.target === selectedNodeId)) ||
+        (graphQuery && (matchingNodeIds.has(edge.source) || matchingNodeIds.has(edge.target)));
 
       ctx.beginPath();
       ctx.moveTo(src.x, src.y!);
       ctx.lineTo(tgt.x, tgt.y!);
+      ctx.globalAlpha = graphQuery && !isHighlight ? 0.18 : 1;
       ctx.strokeStyle = isHighlight ? "#4F46E5" : "#E2E8F0";
       ctx.lineWidth = isHighlight ? 2.5 : 1.2;
       ctx.stroke();
@@ -186,14 +222,27 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
       ctx.fillStyle = isHighlight ? "#4F46E5" : "#94A3B8";
       ctx.textAlign = "center";
       ctx.fillText(edge.label, midX, midY - 3);
+      ctx.globalAlpha = 1;
     });
 
     // Draw nodes
     visibleNodes.forEach((node) => {
       if (node.x === undefined || node.y === undefined) return;
       const isSelected = selectedNodeId === node.id;
+      const isMatch = matchingNodeIds.has(node.id);
+      const isDimmed = Boolean(graphQuery) && !isMatch;
       const color = COLOR_MAP[node.label] || node.color || "#6366F1";
-      const radius = isSelected ? 22 : 18;
+      const radius = isSelected ? 22 : isMatch ? 20 : 18;
+
+      ctx.save();
+      ctx.globalAlpha = isDimmed ? 0.16 : 1;
+
+      if (isMatch) {
+        ctx.beginPath();
+        ctx.arc(node.x, node.y, radius + 10, 0, 2 * Math.PI);
+        ctx.fillStyle = "rgba(79, 70, 229, 0.16)";
+        ctx.fill();
+      }
 
       // Glow effect for selected
       if (isSelected) {
@@ -208,8 +257,8 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
       ctx.arc(node.x, node.y, radius, 0, 2 * Math.PI);
       ctx.fillStyle = "#FFFFFF";
       ctx.fill();
-      ctx.lineWidth = isSelected ? 3 : 2;
-      ctx.strokeStyle = color;
+      ctx.lineWidth = isSelected || isMatch ? 3 : 2;
+      ctx.strokeStyle = isMatch ? "#4F46E5" : color;
       ctx.stroke();
 
       // Inner fill dot
@@ -229,10 +278,11 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
       ctx.font = "8px 'JetBrains Mono', monospace";
       ctx.fillStyle = "#64748B";
       ctx.fillText(node.label, node.x, node.y + radius + 23);
+      ctx.restore();
     });
 
     ctx.restore();
-  }, [visibleNodes, visibleEdges, pan, zoom, selectedNodeId]);
+  }, [visibleNodes, visibleEdges, pan, zoom, selectedNodeId, matchingNodeIds, graphQuery, canvasSize]);
 
   // Click detection
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -257,10 +307,69 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
     );
   };
 
+  const handleWheel = (event: React.WheelEvent<HTMLCanvasElement>) => {
+    event.preventDefault();
+    const rect = event.currentTarget.getBoundingClientRect();
+    const cursor = { x: event.clientX - rect.left, y: event.clientY - rect.top };
+    setZoom((currentZoom) => {
+      const nextZoom = Math.min(4, Math.max(0.35, currentZoom * Math.exp(-event.deltaY * 0.001)));
+      const ratio = nextZoom / currentZoom;
+      setPan((currentPan) => ({
+        x: cursor.x - (cursor.x - currentPan.x) * ratio,
+        y: cursor.y - (cursor.y - currentPan.y) * ratio,
+      }));
+      return nextZoom;
+    });
+  };
+
+  const handleMouseDown = (event: React.MouseEvent<HTMLCanvasElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const graphX = (event.clientX - rect.left - pan.x) / zoom;
+    const graphY = (event.clientY - rect.top - pan.y) / zoom;
+    const node = visibleNodes.find((candidate) =>
+      candidate.x !== undefined && candidate.y !== undefined &&
+      Math.hypot(candidate.x - graphX, candidate.y - graphY) <= 24,
+    );
+    if (node) {
+      setDraggedNode(node);
+    } else {
+      setIsDraggingCanvas(true);
+      setDragStart({ x: event.clientX - pan.x, y: event.clientY - pan.y });
+    }
+  };
+
+  const handleMouseMove = (event: React.MouseEvent<HTMLCanvasElement>) => {
+    if (isDraggingCanvas) {
+      setPan({ x: event.clientX - dragStart.x, y: event.clientY - dragStart.y });
+      return;
+    }
+    if (!draggedNode) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    const x = (event.clientX - rect.left - pan.x) / zoom;
+    const y = (event.clientY - rect.top - pan.y) / zoom;
+    setSimNodes((nodes) => nodes.map((node) => node.id === draggedNode.id ? { ...node, x, y } : node));
+  };
+
+  const stopDragging = () => {
+    setIsDraggingCanvas(false);
+    setDraggedNode(null);
+  };
+
+  const toggleFullscreen = async () => {
+    const container = containerRef.current;
+    if (!container) return;
+    try {
+      if (document.fullscreenElement === container) await document.exitFullscreen();
+      else await container.requestFullscreen();
+    } catch (error) {
+      console.error("Could not toggle graph fullscreen:", error);
+    }
+  };
+
   return (
     <div
       ref={containerRef}
-      className="relative w-full h-[520px] bg-white border border-appBorder rounded-card shadow-card overflow-hidden select-none"
+      className={`relative w-full bg-white border border-appBorder rounded-card shadow-card overflow-hidden select-none ${isFullscreen ? "fixed inset-0 z-[100] h-screen w-screen rounded-none" : "h-[520px]"}`}
     >
       {/* Top Toolbar */}
       <div className="absolute top-3 left-3 right-3 z-10 flex flex-wrap items-center justify-between gap-2 pointer-events-none">
@@ -293,32 +402,48 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
         </div>
 
         {/* Search & zoom controls */}
-        <div className="flex items-center gap-2 pointer-events-auto bg-white/95 backdrop-blur-sm p-1 rounded-lg border border-appBorder shadow-sm">
+        <form
+          onSubmit={(event) => { event.preventDefault(); setGraphQuery(queryInput.trim()); }}
+          className="flex items-center gap-1 pointer-events-auto bg-white/95 backdrop-blur-sm p-1 rounded-lg border border-appBorder shadow-sm"
+        >
           <div className="relative">
             <Search size={12} className="absolute left-2 top-2 text-textMuted" />
             <input
               type="text"
-              placeholder="Filter graph nodes..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="text-xs pl-6 pr-2 py-1 rounded bg-surfaceAlt border border-appBorder focus:outline-none focus:border-primary w-32 md:w-44"
+              placeholder="Ask the graph about pricing, risks…"
+              value={queryInput}
+              onChange={(e) => setQueryInput(e.target.value)}
+              className="text-xs pl-6 pr-2 py-1.5 rounded bg-surfaceAlt border border-appBorder focus:outline-none focus:border-primary w-44 md:w-64"
             />
           </div>
+          <button type="submit" className="flex items-center gap-1.5 p-1.5 rounded bg-primary text-white hover:bg-primary-hover" title="Highlight matching nodes">
+            <Play size={13} />
+            <span className="hidden sm:inline text-[11px]">Run</span>
+          </button>
+          {graphQuery && (
+            <span className="flex items-center gap-1 text-[10px] text-textMuted whitespace-nowrap px-1">
+              {matchingNodeIds.size} match{matchingNodeIds.size === 1 ? "" : "es"}
+              <button type="button" onClick={() => { setGraphQuery(""); setQueryInput(""); }} className="p-0.5 hover:text-appText" title="Clear query"><X size={12} /></button>
+            </span>
+          )}
           <button
-            onClick={() => setZoom((z) => Math.min(2.5, z + 0.2))}
+            type="button"
+            onClick={() => setZoom((z) => Math.min(4, z + 0.2))}
             className="p-1 hover:bg-surfaceAlt rounded text-textMuted"
             title="Zoom in"
           >
             <ZoomIn size={14} />
           </button>
           <button
-            onClick={() => setZoom((z) => Math.max(0.4, z - 0.2))}
+            type="button"
+            onClick={() => setZoom((z) => Math.max(0.35, z - 0.2))}
             className="p-1 hover:bg-surfaceAlt rounded text-textMuted"
             title="Zoom out"
           >
             <ZoomOut size={14} />
           </button>
           <button
+            type="button"
             onClick={() => {
               setZoom(1);
               setPan({ x: 0, y: 0 });
@@ -328,20 +453,34 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
           >
             <RotateCcw size={14} />
           </button>
-        </div>
+          <button type="button" onClick={toggleFullscreen} className="p-1 hover:bg-surfaceAlt rounded text-textMuted" title={isFullscreen ? "Exit full screen" : "Full screen"}>
+            {isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+          </button>
+        </form>
       </div>
 
       {/* Canvas */}
       <canvas
         ref={canvasRef}
         onClick={handleCanvasClick}
-        className="w-full h-full cursor-crosshair"
+        onWheel={handleWheel}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={stopDragging}
+        onMouseLeave={stopDragging}
+        className={`w-full h-full touch-none ${isDraggingCanvas ? "cursor-grabbing" : draggedNode ? "cursor-move" : "cursor-grab"}`}
       />
 
       {/* Empty State */}
       {visibleNodes.length === 0 && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none text-textMuted text-xs">
           No graph nodes matching current filters.
+        </div>
+      )}
+
+      {graphQuery && matchingNodeIds.size === 0 && visibleNodes.length > 0 && (
+        <div className="absolute bottom-12 left-1/2 -translate-x-1/2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 shadow-sm">
+          No nodes matched that prompt. Try a fact name, topic, or node type.
         </div>
       )}
 
@@ -362,6 +501,9 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
         <span className="flex items-center gap-1">
           <span className="w-2 h-2 rounded-full bg-[#EC4899]" /> Task
         </span>
+      </div>
+      <div className="absolute bottom-2 right-3 z-10 rounded-md border border-appBorder bg-white/90 px-2.5 py-1 text-[10px] text-textMuted">
+        Scroll to zoom · drag canvas to pan · drag nodes to reposition
       </div>
     </div>
   );

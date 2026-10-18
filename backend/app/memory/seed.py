@@ -121,7 +121,7 @@ async def seed_demo_founder(founder_id: str = "demo_founder") -> dict:
     ep1_facts = [
         {"key": "icp", "kind": "customer", "text": "Independent primary care clinics with 2-10 physicians burdened by manual EHR documentation", "confidence": 0.94},
         {"key": "problem", "kind": "problem", "text": "Doctors spend 2.5 hours nightly completing SOAP notes, leading to physician burnout and delayed billing", "confidence": 0.96},
-        {"key": "validation_score", "kind": "metric", "text": "Validation score: 86/100 based on strong doctor demand and high Willingness-To-Pay", "confidence": 0.88}
+        {"key": "validation_score", "kind": "metric", "text": "Idea viability score: 86/100", "numeric_value": 86, "confidence": 0.88}
     ]
     ep1_decision = [
         {

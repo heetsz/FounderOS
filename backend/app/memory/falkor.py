@@ -1,4 +1,5 @@
 import logging
+import re
 import time
 from typing import Any, Dict, List, Optional
 from falkordb.asyncio import FalkorDB
@@ -84,6 +85,13 @@ async def init_founder_graph(founder_id: str, name: str, startup_name: str, idea
     await g.query(query, params)
     return {"founder_id": founder_id, "startup_id": sid, "session_id": sess_id}
 
+def _legacy_numeric_value(key: Optional[str], text: Optional[str]) -> Optional[float]:
+    """Read older score facts that predate the dedicated numeric_value property."""
+    if key != "validation_score" or not text:
+        return None
+    match = re.search(r"(?:validation|viability)\s+score\s*:\s*(\d{1,3})\s*(?:/\s*100)?", text, re.IGNORECASE)
+    return float(match.group(1)) if match else None
+
 async def load_memory_context(founder_id: str) -> Dict[str, Any]:
     """
     Reads from FalkorDB:
@@ -101,7 +109,7 @@ async def load_memory_context(founder_id: str) -> Dict[str, Any]:
     MATCH (f:Fact)
     WHERE NOT (f)<-[:SUPERSEDES]-()
     OPTIONAL MATCH (e:Episode)-[:LEARNED]->(f)
-    RETURN f.key AS key, f.kind AS kind, f.text AS text, f.confidence AS confidence,
+    RETURN f.key AS key, f.kind AS kind, f.text AS text, f.confidence AS confidence, f.numeric_value AS numeric_value,
            f.updated_at AS updated_at, e.id AS source_episode, e.agent AS source_agent
     ORDER BY f.updated_at DESC
     LIMIT 25
@@ -114,9 +122,10 @@ async def load_memory_context(founder_id: str) -> Dict[str, Any]:
                 "kind": r[1],
                 "text": r[2],
                 "confidence": r[3],
-                "updated_at": r[4],
-                "source_episode": r[5],
-                "source_agent": r[6],
+                "numeric_value": r[4] if r[4] is not None else _legacy_numeric_value(r[0], r[2]),
+                "updated_at": r[5],
+                "source_episode": r[6],
+                "source_agent": r[7],
             }
             for r in facts_res.result_set
         ] if facts_res.result_set else []
@@ -266,6 +275,7 @@ async def write_curation(
         kind = fact.get("kind", "general").strip()
         text = fact.get("text", "").strip()
         confidence = float(fact.get("confidence", 0.9))
+        numeric_value = fact.get("numeric_value")
         if not key or not text:
             continue
 
@@ -273,7 +283,7 @@ async def write_curation(
         supersede_query = """
         MATCH (old:Fact {key: $key})
         WHERE NOT (old)<-[:SUPERSEDES]-()
-        CREATE (new:Fact {key: $key, kind: $kind, text: $text, confidence: $conf, updated_at: $ts})
+        CREATE (new:Fact {key: $key, kind: $kind, text: $text, confidence: $conf, numeric_value: $numeric_value, updated_at: $ts})
         CREATE (new)-[:SUPERSEDES]->(old)
         WITH new
         MATCH (e:Episode {id: $eid}), (st:Startup {id: $sid})
@@ -286,6 +296,7 @@ async def write_curation(
             "kind": kind,
             "text": text,
             "conf": confidence,
+            "numeric_value": numeric_value,
             "ts": now,
             "eid": episode_id,
             "sid": sid
@@ -294,7 +305,7 @@ async def write_curation(
         if not res.result_set:
             # First time writing this fact key
             create_query = """
-            CREATE (f:Fact {key: $key, kind: $kind, text: $text, confidence: $conf, updated_at: $ts})
+            CREATE (f:Fact {key: $key, kind: $kind, text: $text, confidence: $conf, numeric_value: $numeric_value, updated_at: $ts})
             WITH f
             MATCH (e:Episode {id: $eid}), (st:Startup {id: $sid})
             CREATE (e)-[:LEARNED]->(f)
@@ -306,6 +317,7 @@ async def write_curation(
                 "kind": kind,
                 "text": text,
                 "conf": confidence,
+                "numeric_value": numeric_value,
                 "ts": now,
                 "eid": episode_id,
                 "sid": sid
@@ -316,6 +328,7 @@ async def write_curation(
             "kind": kind,
             "text": text,
             "confidence": confidence,
+            "numeric_value": numeric_value,
             "source_episode": episode_id,
             "timestamp": now
         })
