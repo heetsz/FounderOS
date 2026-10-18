@@ -146,6 +146,8 @@ GROQ_API_KEY=gsk_...
 GOOGLE_API_KEY=AIzaSy...
 FALKOR_HOST=localhost
 FALKOR_PORT=6379
+FALKOR_USERNAME=
+FALKOR_PASSWORD=
 ```
 
 ---
@@ -154,4 +156,3 @@ FALKOR_PORT=6379
 - **Track:** Track 2 — Agent Memory and Coordination
 - **Repository:** Ready to clone and run
 - **Live Demo Proof:** Run the built-in Simulate tool or launch `load_test.py` to observe isolated graphs created in real-time.
-

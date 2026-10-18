@@ -14,6 +14,7 @@ pool = BlockingConnectionPool(
     decode_responses=True,
     host=settings.FALKOR_HOST,
     port=settings.FALKOR_PORT,
+    username=settings.FALKOR_USERNAME or None,
     password=settings.FALKOR_PASSWORD if settings.FALKOR_PASSWORD else None,
 )
 
