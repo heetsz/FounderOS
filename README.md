@@ -9,7 +9,7 @@ FounderOS combines a LangGraph specialist team with persistent, tenant-isolated 
 
 | Resource | Link |
 | --- | --- |
-| **Deployed Link** | https://founderos-frontend-g1yf.onrender.com/ |
+| **Deployed Link** | https://founderos-frontend-g1yf.onrender.com |
 | **Demo video** | https://www.youtube.com/watch?v=pZT5mFh1x5U |
 | **Medium article** | [I Built an AI Co-Founder That Never Forgets](https://medium.com/@heet.shah123/i-built-an-ai-co-founder-that-never-forgets-d1d398198317?sharedUserId=heet.shah123) |
 | **Hackathon track** | **Track 2** - Agent Memory and Coordination |
