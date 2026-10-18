@@ -21,8 +21,8 @@ services:
     environment:
       - FALKOR_HOST=falkordb
       - FALKOR_PORT=6379
-      - GROQ_API_KEY=${GROQ_API_KEY:-}
-      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
     depends_on:
       - falkordb
     restart: always
