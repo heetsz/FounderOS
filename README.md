@@ -1,3 +1,4 @@
+
 # FounderOS 🚀
 
 > An AI co-founder workspace that turns startup ideas into validated decisions, clear roadmaps, and launch-ready artifacts.
@@ -10,8 +11,9 @@ FounderOS combines a LangGraph specialist team with persistent, tenant-isolated 
 | --- | --- |
 | **Live application** | [Open FounderOS](https://founderos-frontend-g1yf.onrender.com/) |
 | **Source repository** | [github.com/heetsz/FounderOS](https://github.com/heetsz/FounderOS) |
-| **Demo video** | YouTube link coming soon |
-| **Hackathon track** | Track 2 - Agent Memory and Coordination |
+| **Demo video** | [Watch FounderOS Demo on YouTube](https://www.youtube.com/watch?v=pZT5mFh1x5U) |
+| **Medium article** | [I Built an AI Co-Founder That Never Forgets](https://medium.com/@heet.shah123/i-built-an-ai-co-founder-that-never-forgets-d1d398198317?sharedUserId=heet.shah123) |
+| **Hackathon track** | **Track 2 - Agent Memory and Coordination** |
 
 <details>
 <summary><strong>Quick navigation</strong></summary>
@@ -147,7 +149,11 @@ The backend uses parameterized Cypher queries through `backend/app/memory/falkor
 MERGE (f:Founder {id: $fid})
 ON CREATE SET f.name = $name, f.created_at = $ts
 MERGE (s:Startup {id: $sid})
-ON CREATE SET s.name = $sname, s.idea = $idea, s.stage = $stage, s.created_at = $ts
+ON CREATE SET
+    s.name = $sname,
+    s.idea = $idea,
+    s.stage = $stage,
+    s.created_at = $ts
 MERGE (f)-[:OWNS]->(s)
 MERGE (sess:Session {id: $sess_id})
 ON CREATE SET sess.created_at = $ts, sess.status = 'active'
@@ -163,8 +169,14 @@ Facts are append-only. A newer fact points to the previous fact with `SUPERSEDES
 MATCH (f:Fact)
 WHERE NOT (f)<-[:SUPERSEDES]-()
 OPTIONAL MATCH (e:Episode)-[:LEARNED]->(f)
-RETURN f.key, f.kind, f.text, f.confidence,
-       f.updated_at, e.id, e.agent
+RETURN
+    f.key,
+    f.kind,
+    f.text,
+    f.confidence,
+    f.updated_at,
+    e.id,
+    e.agent
 ORDER BY f.updated_at DESC
 LIMIT 25
 ```
@@ -175,11 +187,11 @@ LIMIT 25
 MATCH (old:Fact {key: $key})
 WHERE NOT (old)<-[:SUPERSEDES]-()
 CREATE (new:Fact {
-  key: $key,
-  kind: $kind,
-  text: $text,
-  confidence: $conf,
-  updated_at: $ts
+    key: $key,
+    kind: $kind,
+    text: $text,
+    confidence: $conf,
+    updated_at: $ts
 })
 CREATE (new)-[:SUPERSEDES]->(old)
 ```
@@ -190,8 +202,8 @@ CREATE (new)-[:SUPERSEDES]->(old)
 MATCH (previous:Episode {id: $prev_id}),
       (current:Episode {id: $curr_id})
 CREATE (previous)-[:HANDOFF {
-  reason: $reason,
-  ts: $ts
+    reason: $reason,
+    ts: $ts
 }]->(current)
 ```
 
@@ -201,13 +213,18 @@ CREATE (previous)-[:HANDOFF {
 MATCH (d:Decision {id: $decision_id})
 OPTIONAL MATCH (d)-[:BASED_ON]->(f:Fact)
 OPTIONAL MATCH (e:Episode)-[:LEARNED]->(f)
-RETURN d.id, d.title, d.rationale,
-       collect(f.key), collect(f.text), collect(e.agent)
+RETURN
+    d.id,
+    d.title,
+    d.rationale,
+    collect(f.key),
+    collect(f.text),
+    collect(e.agent)
 ```
 
 ### Graph visualization
 
-The Memory Explorer traverses nodes and relationships from the current founder graph:
+The Memory Explorer traverses nodes and relationships from the current founder graph.
 
 ```cypher
 MATCH (n)
@@ -240,6 +257,7 @@ Or run FalkorDB directly:
 
 ```bash
 docker pull falkordb/falkordb:latest
+
 docker run -d \
   -p 6379:6379 \
   -p 3001:3000 \
@@ -250,7 +268,7 @@ docker run -d \
 
 ### 2. Configure the backend
 
-Create `backend/.env` or export these variables in your shell:
+Create `backend/.env` or export these variables in your shell.
 
 ```env
 FALKOR_HOST=localhost
@@ -261,7 +279,7 @@ GROQ_API_KEY=
 GOOGLE_API_KEY=
 ```
 
-For FalkorDB Cloud, use the connection details shown by the instance:
+For FalkorDB Cloud, use the connection details shown by your instance.
 
 ```env
 FALKOR_HOST=your-cloud-host
@@ -274,7 +292,7 @@ Never commit `.env` files or API keys.
 
 Install and start the backend:
 
-```bash
+```powershell
 cd backend
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
@@ -305,7 +323,7 @@ Start Next.js:
 npm run dev
 ```
 
-Open http://localhost:3000.
+Open [http://localhost:3000](http://localhost:3000).
 
 ### One-command backend + database
 
@@ -321,8 +339,8 @@ Then start the frontend separately from `frontend`.
 
 The current production deployment uses:
 
-- **Frontend:** https://founderos-frontend-g1yf.onrender.com/
-- **Backend:** https://founderos-backend-bs5z.onrender.com/
+- **Frontend:** [https://founderos-frontend-g1yf.onrender.com/](https://founderos-frontend-g1yf.onrender.com/)
+- **Backend:** [https://founderos-backend-bs5z.onrender.com/](https://founderos-backend-bs5z.onrender.com/)
 - **Database:** FalkorDB Cloud
 
 The Render backend requires these environment variables:
@@ -338,13 +356,13 @@ GOOGLE_API_KEY
 
 The Render frontend requires:
 
-```text
+```env
 NEXT_PUBLIC_API_URL=https://founderos-backend-bs5z.onrender.com
 ```
 
 ## 🎬 Demo flow
 
-1. Open the live application.
+1. Open the [live application](https://founderos-frontend-g1yf.onrender.com/).
 2. Create or select a founder workspace.
 3. Ask the specialist team a startup question.
 4. Observe streaming agent responses and visible handoffs.
@@ -352,9 +370,17 @@ NEXT_PUBLIC_API_URL=https://founderos-backend-bs5z.onrender.com
 6. Review generated artifacts and roadmap tasks.
 7. Open Simulate to exercise concurrent founder graph writes.
 
-> **Demo video:** YouTube link will be added here.
+### 🎥 Demo video
 
-## Project structure
+[![Watch FounderOS Demo](https://img.youtube.com/vi/pZT5mFh1x5U/hqdefault.jpg)](https://www.youtube.com/watch?v=pZT5mFh1x5U)
+
+**Watch the full demo:** [FounderOS on YouTube](https://www.youtube.com/watch?v=pZT5mFh1x5U)
+
+### 📝 Read the story behind FounderOS
+
+[I Built an AI Co-Founder That Never Forgets — Read on Medium](https://medium.com/@heet.shah123/i-built-an-ai-co-founder-that-never-forgets-d1d398198317?sharedUserId=heet.shah123)
+
+## 📁 Project structure
 
 ```text
 FounderOS/
@@ -378,6 +404,12 @@ FounderOS/
 └── README.md
 ```
 
-## License
+## 🏆 Hackathon
+
+**Track 2 - Agent Memory and Coordination**
+
+FounderOS demonstrates how graph-based persistent memory enables AI agents to retain knowledge across sessions, coordinate through shared state, and produce explainable decisions grounded in connected facts and history.
+
+## 📄 License
 
 This project is provided for the hackathon submission and demonstration.
